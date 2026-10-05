@@ -12,7 +12,7 @@
 :root{--bg:#f1f5f9;--card:#fff;--tx:#0f172a;--mu:#64748b;--ac:#0f766e;--ac2:#14b8a6;--bd:#e2e8f0;--exp:#ef4444;--inc:#16a34a}
 @media(prefers-color-scheme:dark){:root{--bg:#0f172a;--card:#1e293b;--tx:#f1f5f9;--mu:#94a3b8;--bd:#334155;--inc:#4ade80;--exp:#f87171}}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,sans-serif;padding-bottom:130px}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,sans-serif;padding-bottom:140px}
 button{font:inherit;color:inherit}
 header{background:var(--ac);color:#fff;padding:calc(env(safe-area-inset-top) + 12px) 16px 16px}
 .month{display:flex;justify-content:space-between;align-items:center}
@@ -53,16 +53,21 @@ svg .dl{font-size:11px}svg .dv{fill:var(--tx);font-size:17px;font-weight:700}
 .crow{background:var(--card);margin:0 12px 6px;border-radius:14px;padding:10px 12px;display:flex;align-items:center;gap:12px;width:calc(100% - 24px);border:0;text-align:left}
 .crow .m{flex:1}.crow small{display:block;color:var(--mu)}
 .addc{margin:8px 12px;width:calc(100% - 24px)}
-nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--bd);display:flex;align-items:center;padding:6px 8px calc(env(safe-area-inset-bottom) + 6px);z-index:5}
-nav .t{flex:1;border:0;background:none;padding:6px 0;color:var(--mu);font-size:12px}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--bd);display:grid;grid-template-columns:1fr 1fr 92px 1fr 1fr;align-items:center;padding:6px 4px calc(env(safe-area-inset-bottom) + 6px);z-index:5}
+nav .t{border:0;background:none;padding:6px 0;color:var(--mu);font-size:11.5px}
 nav .t span{display:block;font-size:22px}
 nav .t.on{color:var(--ac);font-weight:600}
-nav .sp{width:90px}
 #mic{position:absolute;left:50%;top:-34px;transform:translateX(-50%);width:76px;height:76px;border-radius:50%;border:4px solid var(--bg);background:linear-gradient(135deg,var(--ac),var(--ac2));color:#fff;font-size:32px;box-shadow:0 6px 18px rgba(15,118,110,.5)}
 #mic.rec{background:var(--exp);animation:p 1s infinite}
+#mic.pend{background:linear-gradient(135deg,#16a34a,#4ade80)}
 @keyframes p{50%{transform:translateX(-50%) scale(1.1)}}
-#heard{position:fixed;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom) + 84px);background:var(--tx);color:var(--bg);padding:10px 14px;border-radius:14px;text-align:center;font-size:15px;display:none;z-index:6}
-#heard.on{display:block}
+#heard{position:fixed;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom) + 150px);background:var(--tx);color:var(--bg);padding:10px 14px;border-radius:14px;font-size:15px;display:none;align-items:center;gap:10px;z-index:6;box-shadow:0 4px 16px rgba(0,0,0,.3)}
+#heard.on{display:flex}
+#htxt{flex:1;text-align:center}
+#hx{border:0;background:rgba(128,128,128,.35);color:inherit;width:28px;height:28px;border-radius:50%;display:none}
+#heard.act #hx{display:block}
+.sw2{display:flex;justify-content:space-between;align-items:center;padding:6px 0}
+.more .tools a{display:block;margin:0;padding:14px 4px;border-top:1px solid var(--bd);text-align:left}
 #fab{position:fixed;right:16px;bottom:calc(env(safe-area-inset-bottom) + 84px);width:52px;height:52px;border-radius:50%;border:0;background:var(--card);color:var(--ac);font-size:30px;box-shadow:0 4px 14px rgba(0,0,0,.25);z-index:4}
 .sheet{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:flex-end;z-index:10}
 .sheet.on{display:flex}
@@ -110,17 +115,29 @@ nav .sp{width:90px}
   <div class="seg" id="ctype"><button data-t="expense" class="e on">Расходы</button><button data-t="income" class="i">Доходы</button></div>
   <div id="clist"></div>
   <button class="btn p addc" id="addcat">＋ Новая категория</button>
-  <div class="tools"><a href="#" id="exp">Экспорт CSV</a><a href="#" id="bk">Сохранить копию</a><a href="#" id="rs">Восстановить из копии</a><a href="#" id="help">Виджет для голоса</a></div>
+</section>
+
+<section class="tab more" id="t-more">
+  <div class="card">
+    <h4>Голос</h4>
+    <div class="sw2"><span>Звуки при записи</span><button class="btn" id="snd" style="flex:none;padding:8px 16px"></button></div>
+    <div class="sw2"><span>Микрофон: <b id="mst">…</b></span><button class="btn" id="mchk" style="flex:none;padding:8px 16px">Разрешить</button></div>
+    <div class="hint">Чтобы телефон не спрашивал каждый раз, выбирай «Разрешить» (не «Только сейчас»). Если уже запретил: Chrome → ⋮ → Настройки → Настройки сайтов → Микрофон → найди сайт → Разрешить.</div>
+  </div>
+  <div class="card more"><h4>Данные</h4>
+    <div class="tools" style="padding:0"><a href="#" id="exp">📤 Экспорт в CSV (Excel)</a><a href="#" id="bk">💾 Сохранить копию</a><a href="#" id="rs">📥 Восстановить из копии</a><a href="#" id="help">🎤 Кнопка голоса на рабочем столе</a><a href="#" id="wipe" style="color:var(--exp)">🗑️ Удалить все данные</a></div>
+  </div>
   <input type="file" id="file" accept=".json,application/json" hidden>
 </section>
 
-<div id="heard"></div>
+<div id="heard"><span id="htxt"></span><button id="hx" aria-label="Отмена">✕</button></div>
 <button id="fab" aria-label="Добавить вручную">＋</button>
 <nav>
   <button class="t on" data-tab="ops"><span>🧾</span>Операции</button>
   <button class="t" data-tab="stats"><span>📊</span>Графики</button>
   <div class="sp"></div>
   <button class="t" data-tab="cats"><span>🗂️</span>Категории</button>
+  <button class="t" data-tab="more"><span>⚙️</span>Ещё</button>
   <button id="mic" aria-label="Говорить">🎤</button>
 </nav>
 <div class="sheet" id="sheet"><div class="in" id="sin"></div></div>
@@ -167,8 +184,8 @@ function render(){
   const inc=sum(m,'income'),ex=sum(m,'expense');
   $('bal').textContent=(inc-ex<0?'−':'')+fmt(Math.abs(inc-ex));
   $('tin').textContent='+'+fmt(inc);$('tex').textContent='−'+fmt(ex);
-  $('fab').style.display=tab==='ops'?'':'none';
-  if(tab==='ops')renderOps(m);else if(tab==='stats')renderStats(m);else renderCats(m);
+  $('fab').style.display=tab==='ops'?'':'none';document.querySelector('.month').style.visibility=tab==='more'?'hidden':'';
+  if(tab==='ops')renderOps(m);else if(tab==='stats')renderStats(m);else if(tab==='cats')renderCats(m);else renderMore();
 }
 
 function renderOps(m){
@@ -353,25 +370,78 @@ function handle(text){
   const it={id:Date.now(),ts,type:p.type,amount:p.amount,title:p.title,cat:p.cat};
   items.push(it);persist();
   tab='ops';view=new Date(ts);view.setDate(1);filter=null;setTab('ops');
-  if(navigator.vibrate)navigator.vibrate(60);
+  vib(60);
   confirmSheet(it);
 }
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-let rec=null,listening=false,hideT;
-function say(t,keep){const h=$('heard');h.textContent=t;h.classList.add('on');clearTimeout(hideT);if(!keep)hideT=setTimeout(()=>h.classList.remove('on'),4000)}
-function listen(){
+let soundOn=LS('sound',true);
+let AC=null;
+function tone(seq){
+  if(!soundOn)return;
+  try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();
+    let t=AC.currentTime;
+    seq.forEach(([f,d,v])=>{const o=AC.createOscillator(),g=AC.createGain();o.type='sine';o.frequency.value=f;
+      g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v||.18,t+.015);g.gain.exponentialRampToValueAtTime(.001,t+d);
+      o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+d+.03);t+=d*.75})}catch(e){}
+}
+const SND={start:()=>tone([[523,.09],[784,.16]]),done:()=>tone([[784,.09],[988,.09],[1319,.22]]),err:()=>tone([[330,.12],[247,.22]])};
+const vib=p=>{try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}};
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+
+// 'idle' -> тап -> 'listening' -> тап -> сохранить;  если распознавание оборвалось само, текст ждёт ('pending') и следующий тап сохраняет
+let rec=null,st='idle',curText='',stopReq=false,hadErr=false,hideT;
+function setSt(x){st=x;const m=$('mic');m.classList.toggle('rec',x==='listening');m.classList.toggle('pend',x==='pending');
+  m.textContent=x==='listening'?'⏹':x==='pending'?'✔️':'🎤';$('heard').classList.toggle('act',x!=='idle')}
+function say(t,keep){const h=$('heard');$('htxt').textContent=t;h.classList.add('on');clearTimeout(hideT);if(!keep)hideT=setTimeout(()=>{if(st==='idle')h.classList.remove('on')},4500)}
+function joinResults(res){ // Chrome на Android присылает нарастающие повторы: «йогурт», «йогурт 44», «йогурт 44 рубля»
+  const out=[];
+  for(let i=0;i<res.length;i++){
+    const t=res[i][0].transcript.trim();if(!t)continue;
+    const p=out[out.length-1],tl=t.toLowerCase();
+    if(p!==undefined&&tl.startsWith(p.toLowerCase()))out[out.length-1]=t;
+    else if(p!==undefined&&p.toLowerCase().includes(tl)){}
+    else out.push(t);
+  }
+  return out.join(' ');
+}
+async function micAllowed(){
+  try{if(navigator.permissions){const s=await navigator.permissions.query({name:'microphone'});if(s.state==='granted')return true;if(s.state==='denied')return false}}catch(e){}
+  try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});stream.getTracks().forEach(t=>t.stop());return true}catch(e){return false}
+}
+function finish(){
+  const text=curText.trim();curText='';setSt('idle');$('heard').classList.remove('on');
+  if(text){SND.done();handle(text)}else{SND.err();say('Ничего не услышал, попробуй ещё')}
+}
+function cancelVoice(){stopReq=true;try{rec&&rec.abort()}catch(e){}curText='';setSt('idle');$('heard').classList.remove('on')}
+async function startVoice(){
   if(!SR){say('Голос не поддерживается этим браузером — открой в Chrome или добавь вручную (＋)');return}
-  if(listening){rec&&rec.stop();return}
-  rec=new SR();rec.lang='ru-RU';rec.interimResults=true;rec.maxAlternatives=1;
-  let final='',got=false,err=false;
-  rec.onstart=()=>{listening=true;$('mic').classList.add('rec');say('Слушаю…',true)};
-  rec.onresult=e=>{let t='';for(let i=0;i<e.results.length;i++){t+=e.results[i][0].transcript;if(e.results[i].isFinal)final=t}
-    say('«'+t+'»',true);if(!final)final=t;got=true};
-  rec.onerror=e=>{err=true;say(e.error==='not-allowed'?'Разреши доступ к микрофону в настройках браузера':e.error==='no-speech'?'Ничего не услышал, попробуй ещё':'Ошибка: '+e.error)};
-  rec.onend=()=>{listening=false;$('mic').classList.remove('rec');if(got&&final){$('heard').classList.remove('on');handle(final)}else if(!err)say('Не расслышал, попробуй ещё')};
-  try{rec.start()}catch(e){}
+  SND.start();vib(30);
+  say('Готовлю микрофон…',true);
+  if(!await micAllowed()){SND.err();say('Нет доступа к микрофону. Разреши его: вкладка «Ещё» → Микрофон');return}
+  await wait(300); // чтобы наш звук не попал в запись
+  rec=new SR();rec.lang='ru-RU';rec.continuous=true;rec.interimResults=true;rec.maxAlternatives=1;
+  stopReq=false;hadErr=false;curText='';
+  rec.onstart=()=>{setSt('listening');say('🔴 Говори… (нажми ещё раз — сохраню)',true)};
+  rec.onresult=e=>{curText=joinResults(e.results);say('«'+curText+'»',true)};
+  rec.onerror=e=>{if(e.error==='aborted')return;hadErr=true;SND.err();
+    say(e.error==='not-allowed'||e.error==='service-not-allowed'?'Нет доступа к микрофону: вкладка «Ещё» → Микрофон':e.error==='no-speech'?'Ничего не услышал, попробуй ещё':e.error==='network'?'Нет интернета — голосу нужна сеть':'Ошибка: '+e.error)};
+  rec.onend=()=>{
+    if(st==='idle')return;
+    if(stopReq){finish();return}
+    if(hadErr){curText='';setSt('idle');return}
+    if(curText.trim()){setSt('pending');say('«'+curText+'»  — нажми 🎤, чтобы сохранить',true)} // оборвалось само
+    else{setSt('idle');SND.err();say('Ничего не услышал, попробуй ещё')}
+  };
+  try{rec.start()}catch(e){setSt('idle');say('Не удалось включить запись, попробуй ещё')}
+}
+function listen(){
+  if(st==='listening'){stopReq=true;vib(30);try{rec.stop()}catch(e){finish()}return}
+  if(st==='pending'){vib(30);finish();return}
+  if(window.AudioContext||window.webkitAudioContext){try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();AC.resume()}catch(e){}}
+  startVoice();
 }
 $('mic').onclick=listen;
+$('hx').onclick=cancelVoice;
 
 // ---------- Вкладки и прочее ----------
 function setTab(t){tab=t;document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('on',s.id==='t-'+t));
@@ -381,6 +451,14 @@ $('prev').onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()-1,1);ren
 $('next').onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()+1,1);render()};
 
 function download(name,mime,text){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:mime}));a.download=name;a.click()}
+function renderMore(){
+  $('snd').textContent=soundOn?'Вкл':'Выкл';
+  (async()=>{let t='неизвестно';try{const s=await navigator.permissions.query({name:'microphone'});t={granted:'разрешён ✅',denied:'запрещён ⛔',prompt:'спросит при записи'}[s.state]||s.state}catch(e){}$('mst').textContent=t})();
+}
+$('snd').onclick=()=>{soundOn=!soundOn;save('sound',soundOn);renderMore();SND.done()};
+$('mchk').onclick=async()=>{const ok=await micAllowed();await renderMore();if(!ok)say('Доступ запрещён — открой настройки сайта в Chrome (подсказка ниже)')};
+$('wipe').onclick=e=>{e.preventDefault();sheet(`<h3>Удалить все данные?</h3><p>Все записи и свои категории будут стёрты на этом телефоне. Сначала можно сохранить копию.</p><div class="row"><button class="btn" id="n">Отмена</button><button class="btn d" id="y">Удалить всё</button></div>`);
+  $('n').onclick=closeSheet;$('y').onclick=()=>{items=[];cats=Parser.DEFAULTS.map(c=>({...c,kw:[...c.kw]}));learned={};persist();closeSheet();render()}};
 $('exp').onclick=e=>{e.preventDefault();
   const csv='Дата;Тип;Название;Категория;Сумма\n'+[...items].sort((a,b)=>a.ts-b.ts).map(i=>[new Date(i.ts).toLocaleString('ru-RU'),i.type==='income'?'Доход':'Расход','"'+(i.title||'').replace(/"/g,'""')+'"',catById(i.cat).name,String(i.amount).replace('.',',')].join(';')).join('\n');
   download('rashody.csv','text/csv','﻿'+csv)};
