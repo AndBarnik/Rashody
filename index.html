@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f766e">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Расходы</title>
+<style>
+:root{--bg:#f1f5f9;--card:#fff;--tx:#0f172a;--mu:#64748b;--ac:#0f766e;--ac2:#14b8a6;--bd:#e2e8f0;--red:#dc2626}
+@media(prefers-color-scheme:dark){:root{--bg:#0f172a;--card:#1e293b;--tx:#f1f5f9;--mu:#94a3b8;--bd:#334155}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,sans-serif;padding-bottom:230px}
+header{background:var(--ac);color:#fff;padding:calc(env(safe-area-inset-top) + 16px) 16px 20px}
+header small{opacity:.8}
+header .total{font-size:34px;font-weight:700}
+.month{display:flex;justify-content:space-between;align-items:center}
+.month button{background:rgba(255,255,255,.2);border:0;color:#fff;font-size:20px;border-radius:10px;width:40px;height:36px}
+.cats{display:flex;gap:8px;overflow-x:auto;padding:12px 16px;scrollbar-width:none}
+.chip{flex:none;background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:8px 12px;font-size:13px}
+.chip b{display:block;font-size:15px}
+.chip.on{border-color:var(--ac);outline:2px solid var(--ac)}
+.day{padding:10px 16px 4px;color:var(--mu);font-size:13px;display:flex;justify-content:space-between}
+.item{background:var(--card);margin:0 12px 6px;border-radius:14px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.item .t{font-weight:600}.item .c{font-size:13px;color:var(--mu)}
+.item .a{font-weight:700;white-space:nowrap}
+.empty{text-align:center;color:var(--mu);padding:40px 20px}
+.dock{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--bd);padding:10px 16px calc(env(safe-area-inset-bottom) + 12px);text-align:center;box-shadow:0 -4px 20px rgba(0,0,0,.08)}
+#heard{min-height:24px;color:var(--mu);font-size:15px;margin-bottom:6px}
+#mic{width:84px;height:84px;border-radius:50%;border:0;background:linear-gradient(135deg,var(--ac),var(--ac2));color:#fff;font-size:38px;box-shadow:0 6px 18px rgba(15,118,110,.5)}
+#mic.rec{background:var(--red);animation:p 1s infinite}
+@keyframes p{50%{transform:scale(1.1)}}
+.manual{display:flex;gap:8px;margin-top:10px}
+.manual input{flex:1;padding:10px 12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font-size:16px}
+.manual button{padding:0 16px;border-radius:12px;border:0;background:var(--ac);color:#fff;font-size:16px}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:flex-end;z-index:10}
+.sheet.on{display:flex}
+.sheet .in{background:var(--card);width:100%;border-radius:22px 22px 0 0;padding:20px 16px calc(env(safe-area-inset-bottom) + 20px);max-height:85vh;overflow:auto}
+.sheet h3{margin:0 0 4px}
+.ok{font-size:42px;text-align:center}
+.big{font-size:30px;font-weight:700;text-align:center}
+.row{display:flex;gap:8px;margin-top:14px}
+.row button,.btn{flex:1;padding:14px;border-radius:12px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font-size:16px}
+.btn.p{background:var(--ac);color:#fff;border:0}.btn.d{color:var(--red)}
+.cl{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.cl button{padding:10px 14px;border-radius:20px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font-size:15px}
+.cl button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.sheet input{width:100%;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font-size:16px;margin-top:8px}
+.tools{text-align:center;padding:16px;font-size:13px;color:var(--mu)}
+.tools a{color:var(--ac);margin:0 8px}
+</style>
+</head>
+<body>
+<header>
+  <div class="month"><button id="prev">‹</button><small id="mname"></small><button id="next">›</button></div>
+  <div class="total" id="total">0 ₽</div>
+</header>
+<div class="cats" id="cats"></div>
+<div id="list"></div>
+<div class="tools"><a href="#" id="exp">Экспорт CSV</a><a href="#" id="help">Как добавить виджет</a></div>
+
+<div class="dock">
+  <div id="heard">Нажми на микрофон и скажи: «йогурт 44 рубля»</div>
+  <button id="mic" aria-label="Говорить">🎤</button>
+  <form class="manual" id="mf"><input id="mi" placeholder="или напиши: такси 350" autocomplete="off"><button>OK</button></form>
+</div>
+
+<div class="sheet" id="sheet"><div class="in" id="sin"></div></div>
+
+<script src="parser.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const LS=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}};
+const save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+let items=LS('items',[]), learned=LS('learned',{});
+let view=new Date(); view.setDate(1); let filter=null;
+const ICON={'Продукты':'🛒','Кафе и рестораны':'🍔','Транспорт':'🚕','Жильё и ЖКХ':'🏠','Дом и быт':'🧽','Здоровье':'💊','Одежда и обувь':'👕','Развлечения':'🎬','Связь и интернет':'📱','Красота':'💇','Образование':'📚','Подарки':'🎁','Животные':'🐾','Прочее':'📦'};
+const fmt=n=>(Math.round(n*100)/100).toLocaleString('ru-RU')+' ₽';
+const mkey=d=>d.getFullYear()+'-'+d.getMonth();
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function render(){
+  $('mname').textContent=view.toLocaleDateString('ru-RU',{month:'long',year:'numeric'});
+  const m=items.filter(i=>mkey(new Date(i.ts))===mkey(view));
+  $('total').textContent=fmt(m.reduce((s,i)=>s+i.amount,0));
+  const sums={}; m.forEach(i=>sums[i.category]=(sums[i.category]||0)+i.amount);
+  $('cats').innerHTML=Object.entries(sums).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`<div class="chip ${filter===c?'on':''}" data-c="${esc(c)}">${ICON[c]||''} ${esc(c)}<b>${fmt(v)}</b></div>`).join('');
+  const shown=(filter?m.filter(i=>i.category===filter):m).sort((a,b)=>b.ts-a.ts);
+  if(!shown.length){$('list').innerHTML='<div class="empty">Пока пусто.<br>Нажми 🎤 и назови покупку.</div>';return}
+  let h='',last='';
+  for(const i of shown){
+    const d=new Date(i.ts).toLocaleDateString('ru-RU',{day:'numeric',month:'long',weekday:'short'});
+    if(d!==last){const dt=shown.filter(x=>new Date(x.ts).toLocaleDateString('ru-RU',{day:'numeric',month:'long',weekday:'short'})===d).reduce((s,x)=>s+x.amount,0);h+=`<div class="day"><span>${d}</span><span>${fmt(dt)}</span></div>`;last=d}
+    h+=`<div class="item" data-id="${i.id}"><div><div class="t">${esc(i.title||i.category)}</div><div class="c">${ICON[i.category]||''} ${esc(i.category)}</div></div><div class="a">${fmt(i.amount)}</div></div>`;
+  }
+  $('list').innerHTML=h;
+}
+$('cats').onclick=e=>{const c=e.target.closest('.chip');if(!c)return;filter=filter===c.dataset.c?null:c.dataset.c;render()};
+$('prev').onclick=()=>{view.setMonth(view.getMonth()-1);render()};
+$('next').onclick=()=>{view.setMonth(view.getMonth()+1);render()};
+$('list').onclick=e=>{const it=e.target.closest('.item');if(it)editSheet(items.find(x=>x.id==it.dataset.id))};
+
+function sheet(html){$('sin').innerHTML=html;$('sheet').classList.add('on')}
+function closeSheet(){$('sheet').classList.remove('on')}
+$('sheet').onclick=e=>{if(e.target.id==='sheet')closeSheet()};
+
+function add(p,raw){
+  const it={id:Date.now(),ts:Date.now(),amount:p.amount,title:p.title,category:p.category,raw};
+  items.push(it);save('items',items);
+  view=new Date();view.setDate(1);filter=null;render();
+  if(navigator.vibrate)navigator.vibrate(60);
+  confirmSheet(it);
+}
+function confirmSheet(it){
+  sheet(`<div class="ok">✅</div><div class="big">${fmt(it.amount)}</div>
+  <div style="text-align:center;margin-top:4px"><b>${esc(it.title||'Без названия')}</b><br>${ICON[it.category]||''} ${esc(it.category)}</div>
+  <div class="row"><button class="btn d" id="undo">Отменить</button><button class="btn" id="chg">Изменить</button><button class="btn p" id="done">Готово</button></div>`);
+  $('done').onclick=closeSheet;
+  $('undo').onclick=()=>{items=items.filter(x=>x.id!==it.id);save('items',items);render();closeSheet()};
+  $('chg').onclick=()=>editSheet(it);
+  clearTimeout(confirmSheet.t);confirmSheet.t=setTimeout(()=>{if($('done'))closeSheet()},6000);
+}
+function editSheet(it){
+  clearTimeout(confirmSheet.t);
+  sheet(`<h3>Изменить расход</h3>
+  <input id="et" value="${esc(it.title||'')}" placeholder="Название">
+  <input id="ea" type="number" inputmode="decimal" step="0.01" value="${it.amount}">
+  <div class="cl">${Parser.CATS.map(c=>`<button data-c="${esc(c)}" class="${c===it.category?'on':''}">${ICON[c]||''} ${esc(c)}</button>`).join('')}</div>
+  <div class="row"><button class="btn d" id="del">Удалить</button><button class="btn p" id="sv">Сохранить</button></div>`);
+  let cat=it.category;
+  document.querySelectorAll('.cl button').forEach(b=>b.onclick=()=>{cat=b.dataset.c;document.querySelectorAll('.cl button').forEach(x=>x.classList.toggle('on',x===b))});
+  $('del').onclick=()=>{items=items.filter(x=>x.id!==it.id);save('items',items);render();closeSheet()};
+  $('sv').onclick=()=>{
+    it.title=$('et').value.trim();it.amount=parseFloat($('ea').value)||it.amount;
+    if(cat!==it.category){ // запоминаем выбор: слово -> категория
+      Parser.norm(it.title||'').split(/\s+/).filter(w=>w.length>2).forEach(w=>learned[w]=cat);
+      save('learned',learned);it.category=cat;
+    }
+    save('items',items);render();closeSheet();
+  };
+}
+
+function handle(text){
+  text=text.trim();if(!text)return;
+  const p=Parser.parse(text,learned);
+  if(p.amount==null||p.amount<=0){
+    sheet(`<h3>Не расслышал сумму</h3><p>Услышал: «${esc(text)}»</p><input id="ea" type="number" inputmode="decimal" placeholder="Сумма, ₽">
+    <div class="row"><button class="btn" id="cn">Отмена</button><button class="btn p" id="ok">Добавить</button></div>`);
+    $('cn').onclick=closeSheet;
+    $('ok').onclick=()=>{const a=parseFloat($('ea').value);if(a>0){closeSheet();add({...p,amount:a},text)}};
+    return;
+  }
+  add(p,text);
+}
+$('mf').onsubmit=e=>{e.preventDefault();handle($('mi').value);$('mi').value=''};
+
+// ---- Голос ----
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let rec=null,listening=false;
+function listen(){
+  if(!SR){$('heard').textContent='Голос не поддерживается этим браузером — открой в Chrome или пиши текстом';return}
+  if(listening){rec&&rec.stop();return}
+  rec=new SR();rec.lang='ru-RU';rec.interimResults=true;rec.maxAlternatives=1;
+  let final='',got=false;
+  rec.onstart=()=>{listening=true;$('mic').classList.add('rec');$('heard').textContent='Слушаю…'};
+  rec.onresult=e=>{let t='';for(let i=0;i<e.results.length;i++){t+=e.results[i][0].transcript;if(e.results[i].isFinal)final=t}
+    $('heard').textContent='«'+t+'»';if(!final)final=t;got=true};
+  rec.onerror=e=>{$('heard').textContent=e.error==='not-allowed'?'Разреши доступ к микрофону в настройках браузера':e.error==='no-speech'?'Ничего не услышал, попробуй ещё':'Ошибка: '+e.error};
+  rec.onend=()=>{listening=false;$('mic').classList.remove('rec');if(got&&final)handle(final)};
+  try{rec.start()}catch(e){}
+}
+$('mic').onclick=listen;
+
+// Запуск из ярлыка/виджета: ?voice=1 — сразу слушаем
+if(new URLSearchParams(location.search).get('voice')==='1'){
+  window.addEventListener('load',()=>setTimeout(listen,300));
+  history.replaceState(null,'','./');
+}
+
+$('exp').onclick=e=>{e.preventDefault();
+  const csv='Дата;Название;Категория;Сумма\n'+items.sort((a,b)=>a.ts-b.ts).map(i=>[new Date(i.ts).toLocaleString('ru-RU'),'"'+(i.title||'').replace(/"/g,'""')+'"',i.category,String(i.amount).replace('.',',')].join(';')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv'}));a.download='rashody.csv';a.click()};
+$('help').onclick=e=>{e.preventDefault();sheet(`<h3>Голос без открытия приложения</h3>
+<p><b>1.</b> В Chrome нажми ⋮ → «Установить приложение» (или «Добавить на главный экран»).</p>
+<p><b>2.</b> На главном экране <b>зажми иконку «Расходы»</b> — появится пункт <b>«Записать голосом»</b>. Зажми его и перетащи на рабочий стол: получится отдельная кнопка-ярлык. Тап — и сразу идёт запись.</p>
+<p><b>3.</b> Можно вызвать и голосом через ассистента: «Окей, Google, открой Расходы».</p>
+<button class="btn p" onclick="document.getElementById('sheet').classList.remove('on')">Понятно</button>`)};
+
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
+render();
+</script>
+</body>
+</html>
