@@ -122,7 +122,7 @@ nav .t.on{color:var(--ac);font-weight:600}
     <h4>Голос</h4>
     <div class="sw2"><span>Звуки при записи</span><button class="btn" id="snd" style="flex:none;padding:8px 16px"></button></div>
     <div class="sw2"><span>Микрофон: <b id="mst">…</b></span><button class="btn" id="mchk" style="flex:none;padding:8px 16px">Разрешить</button></div>
-    <div class="hint">Чтобы телефон не спрашивал каждый раз, выбирай «Разрешить» (не «Только сейчас»). Если уже запретил: Chrome → ⋮ → Настройки → Настройки сайтов → Микрофон → найди сайт → Разрешить.</div>
+    <div class="hint" id="mhint">Чтобы телефон не спрашивал каждый раз, выбирай «Разрешить» (не «Только сейчас»). Если уже запретил: Chrome → ⋮ → Настройки → Настройки сайтов → Микрофон → найди сайт → Разрешить.</div>
   </div>
   <div class="card more"><h4>Данные</h4>
     <div class="tools" style="padding:0"><a href="#" id="exp">📤 Экспорт в CSV (Excel)</a><a href="#" id="bk">💾 Сохранить копию</a><a href="#" id="rs">📥 Восстановить из копии</a><a href="#" id="help">🎤 Кнопка голоса на рабочем столе</a><a href="#" id="wipe" style="color:var(--exp)">🗑️ Удалить все данные</a></div>
@@ -374,6 +374,10 @@ function handle(text){
   confirmSheet(it);
 }
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+const IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const STANDALONE=!!(navigator.standalone||(window.matchMedia&&matchMedia('(display-mode: standalone)').matches));
+// iPhone-приложение с экрана «Домой» не умеет встроенное распознавание -> диктуем через клавиатуру
+const DICTATE=(IOS&&STANDALONE)||!SR;
 let soundOn=LS('sound',true);
 function tone(seq){
   if(!soundOn)return;
@@ -431,6 +435,7 @@ function beginRec(cont,retry){
   rec.onstart=()=>{setSt('listening');say('🔴 Говори… (нажми ещё раз — сохраню)',true)};
   rec.onresult=e=>{curText=joinResults(e.results);say('«'+curText+'»',true)};
   rec.onerror=e=>{lastErr=e.error;if(e.error==='aborted'||e.error==='no-speech'&&!stopReq&&Date.now()-t0<1500)return;hadErr=true;SND.err();
+    if(e.error==='not-allowed'||e.error==='service-not-allowed'||e.error==='audio-capture'){setSt('idle');$('heard').classList.remove('on');dictSheet('Запись голоса недоступна — продиктуй через клавиатуру: нажми значок микрофона на ней.');return}
     say(e.error==='not-allowed'||e.error==='service-not-allowed'?'Нет доступа к микрофону: вкладка «Ещё» → Микрофон':e.error==='no-speech'?'Ничего не услышал, попробуй ещё':e.error==='network'?'Нет интернета — голосу нужна сеть':e.error==='audio-capture'?'Микрофон занят другим приложением или недоступен':'Ошибка: '+e.error)};
   rec.onend=()=>{
     if(st==='idle')return;
@@ -438,12 +443,26 @@ function beginRec(cont,retry){
     if(hadErr){curText='';setSt('idle');return}
     if(curText.trim()){setSt('pending');say('«'+curText+'»  — нажми 🎤, чтобы сохранить',true);return} // оборвалось само, текст сохранён
     const ms=Date.now()-t0;
-    if(ms<2000&&retry<2){setSt('idle');say('Включаю заново…',true);setTimeout(()=>beginRec(!cont,retry+1),400);return} // мгновенный обрыв: пробуем другой режим
-    setSt('idle');SND.err();say('Запись сразу обрывается'+(lastErr?' ('+lastErr+')':'')+' — закрой другие приложения с микрофоном и попробуй ещё')
+    if(ms<2000&&retry<(IOS?0:2)){setSt('idle');say('Включаю заново…',true);setTimeout(()=>beginRec(!cont,retry+1),400);return} // мгновенный обрыв: пробуем другой режим
+    setSt('idle');$('heard').classList.remove('on');dictSheet('Запись голоса тут не работает — продиктуй через клавиатуру: нажми значок микрофона на ней.')
   };
   try{rec.start()}catch(e){setSt('idle');say('Не удалось включить запись, попробуй ещё')}
 }
+function dictSheet(note){
+  sheet(`<h3>🎤 Скажи или напиши</h3>
+  <div class="hint" style="font-size:14px;margin:0 0 8px">${note||'Нажми значок микрофона на клавиатуре телефона и скажи, например: «йогурт 44 рубля».'}</div>
+  <form id="df"><input id="dt" placeholder="йогурт 44 рубля" autocomplete="off" autocapitalize="off" enterkeyhint="done" style="font-size:20px">
+  <div id="dp" style="font-size:15px;min-height:24px;margin:10px 0 0;color:var(--mu)"></div>
+  <div class="row"><button type="button" class="btn" id="dc">Отмена</button><button class="btn p" id="ds">Записать</button></div></form>`);
+  const upd=()=>{const t=$('dt').value.trim();if(!t){$('dp').textContent='';return}
+    const p=Parser.parse(t,cats,learned),c=catById(p.cat);
+    $('dp').textContent=p.amount>0?`${c.icon} ${c.name} · ${sfmt(p.amount,p.type)}${p.title?' · '+p.title:''}`:'Добавь сумму: «… 44 рубля»'};
+  $('dt').oninput=upd;$('dc').onclick=closeSheet;
+  $('df').onsubmit=e=>{e.preventDefault();const t=$('dt').value;closeSheet();handle(t)};
+  $('dt').focus();
+}
 function listen(){
+  if(DICTATE&&st==='idle'){dictSheet();return}
   if(starting)return;
   if(st==='listening'){stopReq=true;vib(30);try{rec.stop()}catch(e){finish()}return}
   if(st==='pending'){vib(30);finish();return}
@@ -461,6 +480,7 @@ $('next').onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()+1,1);ren
 
 function download(name,mime,text){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:mime}));a.download=name;a.click()}
 function renderMore(){
+  if(DICTATE){$('mchk').style.display='none';$('mst').textContent='не нужен';$('mhint').textContent=IOS?'На iPhone голос вводится диктовкой клавиатуры: нажми 🎤 в приложении, потом значок микрофона на клавиатуре и говори. Разрешения не нужны.':'Голосовой ввод через клавиатуру: нажми значок микрофона на ней.'}
   $('snd').textContent=soundOn?'Вкл':'Выкл';
   (async()=>{let t='неизвестно';try{const s=await navigator.permissions.query({name:'microphone'});t={granted:'разрешён ✅',denied:'запрещён ⛔',prompt:'спросит при записи'}[s.state]||s.state}catch(e){}$('mst').textContent=t})();
 }
@@ -479,7 +499,13 @@ $('file').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileRe
     $('n').onclick=closeSheet;$('y').onclick=()=>{items=j.items;cats=j.cats;learned=j.learned||{};persist();closeSheet();render()}}
     catch{sheet('<h3>Не тот файл</h3><p>Это не копия приложения «Расходы».</p><button class="btn p" style="width:100%" onclick="closeSheet()">Понятно</button>')}};
   r.readAsText(f);e.target.value=''};
-$('help').onclick=e=>{e.preventDefault();sheet(`<h3>Голос без открытия приложения</h3>
+$('help').onclick=e=>{e.preventDefault();if(IOS){sheet(`<h3>Быстрый доступ на iPhone</h3>
+<p><b>1.</b> Открой сайт в Safari → «Поделиться» → <b>«На экран “Домой”»</b>. Запускай приложение только с этой иконки.</p>
+<p><b>2.</b> Нажми 🎤 → откроется строка с клавиатурой → нажми <b>значок микрофона на клавиатуре</b> и скажи: «йогурт 44 рубля» → «Записать».</p>
+<p><b>3.</b> Чтобы иконка всегда была под рукой, положи её на первый экран или в нижний ряд.</p>
+<p>Виджета и ярлыка прямо в запись голоса из веб-приложения на iPhone сделать нельзя — это ограничение iOS.</p>
+<button class="btn p" style="width:100%" onclick="closeSheet()">Понятно</button>`);return}
+  sheet(`<h3>Голос без открытия приложения</h3>
 <p><b>1.</b> В Chrome нажми ⋮ → «Установить приложение».</p>
 <p><b>2.</b> На главном экране <b>зажми иконку «Расходы»</b> — появится пункт <b>«Записать голосом»</b>. Зажми его и перетащи на рабочий стол: тап по нему сразу включает запись.</p>
 <p><b>3.</b> Или скажи ассистенту: «Окей, Google, открой Расходы».</p>
