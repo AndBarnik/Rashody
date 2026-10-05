@@ -375,14 +375,13 @@ function handle(text){
 }
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 let soundOn=LS('sound',true);
-let AC=null;
 function tone(seq){
   if(!soundOn)return;
-  try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();
-    let t=AC.currentTime;
+  try{const AC=new (window.AudioContext||window.webkitAudioContext)();let t=AC.currentTime;
     seq.forEach(([f,d,v])=>{const o=AC.createOscillator(),g=AC.createGain();o.type='sine';o.frequency.value=f;
       g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v||.18,t+.015);g.gain.exponentialRampToValueAtTime(.001,t+d);
-      o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+d+.03);t+=d*.75})}catch(e){}
+      o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+d+.03);t+=d*.75});
+    setTimeout(()=>{try{AC.close()}catch(e){}},(t-AC.currentTime)*1000+250)}catch(e){}
 }
 const SND={start:()=>tone([[523,.09],[784,.16]]),done:()=>tone([[784,.09],[988,.09],[1319,.22]]),err:()=>tone([[330,.12],[247,.22]])};
 const vib=p=>{try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}};
@@ -406,38 +405,48 @@ function joinResults(res){ // Chrome на Android присылает нарас�
 }
 async function micAllowed(){
   try{if(navigator.permissions){const s=await navigator.permissions.query({name:'microphone'});if(s.state==='granted')return true;if(s.state==='denied')return false}}catch(e){}
-  try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});stream.getTracks().forEach(t=>t.stop());return true}catch(e){return false}
+  try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});stream.getTracks().forEach(t=>t.stop());await wait(500);return true}catch(e){return false}
 }
 function finish(){
   const text=curText.trim();curText='';setSt('idle');$('heard').classList.remove('on');
   if(text){SND.done();handle(text)}else{SND.err();say('Ничего не услышал, попробуй ещё')}
 }
 function cancelVoice(){stopReq=true;try{rec&&rec.abort()}catch(e){}curText='';setSt('idle');$('heard').classList.remove('on')}
+let starting=false;
 async function startVoice(){
   if(!SR){say('Голос не поддерживается этим браузером — открой в Chrome или добавь вручную (＋)');return}
+  starting=true;
   SND.start();vib(30);
   say('Готовлю микрофон…',true);
-  if(!await micAllowed()){SND.err();say('Нет доступа к микрофону. Разреши его: вкладка «Ещё» → Микрофон');return}
-  await wait(300); // чтобы наш звук не попал в запись
-  rec=new SR();rec.lang='ru-RU';rec.continuous=true;rec.interimResults=true;rec.maxAlternatives=1;
+  const ok=await micAllowed();
+  if(!ok){starting=false;SND.err();say('Нет доступа к микрофону. Разреши его: вкладка «Ещё» → Микрофон');return}
+  await wait(450); // пусть наш сигнал закончится, чтобы не попал в запись
+  starting=false;
+  beginRec(false,0);
+}
+function beginRec(cont,retry){
+  rec=new SR();rec.lang='ru-RU';rec.continuous=cont;rec.interimResults=true;rec.maxAlternatives=1;
   stopReq=false;hadErr=false;curText='';
+  const t0=Date.now();let lastErr='';
   rec.onstart=()=>{setSt('listening');say('🔴 Говори… (нажми ещё раз — сохраню)',true)};
   rec.onresult=e=>{curText=joinResults(e.results);say('«'+curText+'»',true)};
-  rec.onerror=e=>{if(e.error==='aborted')return;hadErr=true;SND.err();
-    say(e.error==='not-allowed'||e.error==='service-not-allowed'?'Нет доступа к микрофону: вкладка «Ещё» → Микрофон':e.error==='no-speech'?'Ничего не услышал, попробуй ещё':e.error==='network'?'Нет интернета — голосу нужна сеть':'Ошибка: '+e.error)};
+  rec.onerror=e=>{lastErr=e.error;if(e.error==='aborted'||e.error==='no-speech'&&!stopReq&&Date.now()-t0<1500)return;hadErr=true;SND.err();
+    say(e.error==='not-allowed'||e.error==='service-not-allowed'?'Нет доступа к микрофону: вкладка «Ещё» → Микрофон':e.error==='no-speech'?'Ничего не услышал, попробуй ещё':e.error==='network'?'Нет интернета — голосу нужна сеть':e.error==='audio-capture'?'Микрофон занят другим приложением или недоступен':'Ошибка: '+e.error)};
   rec.onend=()=>{
     if(st==='idle')return;
     if(stopReq){finish();return}
     if(hadErr){curText='';setSt('idle');return}
-    if(curText.trim()){setSt('pending');say('«'+curText+'»  — нажми 🎤, чтобы сохранить',true)} // оборвалось само
-    else{setSt('idle');SND.err();say('Ничего не услышал, попробуй ещё')}
+    if(curText.trim()){setSt('pending');say('«'+curText+'»  — нажми 🎤, чтобы сохранить',true);return} // оборвалось само, текст сохранён
+    const ms=Date.now()-t0;
+    if(ms<2000&&retry<2){setSt('idle');say('Включаю заново…',true);setTimeout(()=>beginRec(!cont,retry+1),400);return} // мгновенный обрыв: пробуем другой режим
+    setSt('idle');SND.err();say('Запись сразу обрывается'+(lastErr?' ('+lastErr+')':'')+' — закрой другие приложения с микрофоном и попробуй ещё')
   };
   try{rec.start()}catch(e){setSt('idle');say('Не удалось включить запись, попробуй ещё')}
 }
 function listen(){
+  if(starting)return;
   if(st==='listening'){stopReq=true;vib(30);try{rec.stop()}catch(e){finish()}return}
   if(st==='pending'){vib(30);finish();return}
-  if(window.AudioContext||window.webkitAudioContext){try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();AC.resume()}catch(e){}}
   startVoice();
 }
 $('mic').onclick=listen;
