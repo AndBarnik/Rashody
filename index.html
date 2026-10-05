@@ -477,6 +477,7 @@ $('help').onclick=e=>{e.preventDefault();sheet(`<h3>Голос без откры
 <p>Доход тоже голосом: «зарплата 50 тысяч», «получил 3000». Можно сказать «вчера такси 300».</p>
 <button class="btn p" style="width:100%" onclick="closeSheet()">Понятно</button>`)};
 
+if(new URLSearchParams(location.search).get('add')==='1'){window.addEventListener('load',()=>{entrySheet(null);history.replaceState(null,'','./')})}
 if(new URLSearchParams(location.search).get('voice')==='1'){
   window.addEventListener('load',()=>setTimeout(listen,300));
   history.replaceState(null,'','./');
