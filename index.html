@@ -3,96 +3,97 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0f766e">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
 <title>Расходы</title>
 <style>
-:root{--bg:#f1f5f9;--card:#fff;--tx:#0f172a;--mu:#64748b;--ac:#0f766e;--ac2:#14b8a6;--bd:#e2e8f0;--exp:#ef4444;--inc:#16a34a}
-@media(prefers-color-scheme:dark){:root{--bg:#0f172a;--card:#1e293b;--tx:#f1f5f9;--mu:#94a3b8;--bd:#334155;--inc:#4ade80;--exp:#f87171}}
+:root{--bg:#fff;--card:#f4f4f4;--tx:#0a0a0a;--mu:#8a8a8a;--ac:#0a0a0a;--on:#fff;--bd:#ebebeb;--exp:#0a0a0a;--inc:#16a34a;--rec:#dc2626}
+@media(prefers-color-scheme:dark){:root{--bg:#000;--card:#161616;--tx:#f5f5f5;--mu:#808080;--ac:#f5f5f5;--on:#000;--bd:#222;--exp:#f5f5f5;--inc:#4ade80;--rec:#f87171}}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,sans-serif;padding-bottom:140px}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 -apple-system,system-ui,sans-serif;padding-bottom:140px}
 button{font:inherit;color:inherit}
-header{background:var(--ac);color:#fff;padding:calc(env(safe-area-inset-top) + 12px) 16px 16px}
-.month{display:flex;justify-content:space-between;align-items:center}
-.month button{background:rgba(255,255,255,.2);border:0;color:#fff;font-size:20px;border-radius:10px;width:40px;height:34px}
+header{padding:calc(env(safe-area-inset-top) + 10px) 16px 14px}
+.month{display:flex;justify-content:space-between;align-items:center;color:var(--mu);font-size:15px}
+.month button{background:var(--card);border:0;font-size:20px;border-radius:50%;width:36px;height:36px;line-height:1}
 .month span::first-letter{text-transform:uppercase}
-.bal{text-align:center;font-size:32px;font-weight:700;margin:6px 0 2px}
-.sub{display:flex;justify-content:space-around;font-size:14px}
-.sub b{display:block;font-size:17px}
+.bal{text-align:center;font-size:44px;font-weight:600;letter-spacing:-1.5px;margin:10px 0 6px}
+.sub{display:flex;justify-content:center;gap:40px;font-size:13px;color:var(--mu)}
+.sub b{display:block;font-size:16px;font-weight:500;color:var(--tx)}
 .tab{display:none}.tab.on{display:block}
-.cats{display:flex;gap:8px;overflow-x:auto;padding:12px 16px;scrollbar-width:none}
-.chip{flex:none;background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:8px 12px;font-size:13px}
-.chip b{display:block;font-size:15px}
-.chip.on{outline:2px solid var(--ac)}
-.day{padding:10px 16px 4px;color:var(--mu);font-size:13px;display:flex;justify-content:space-between}
-.item{background:var(--card);margin:0 12px 6px;border-radius:14px;padding:10px 12px;display:flex;align-items:center;gap:12px}
-.ic{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-size:21px;flex:none}
+.cats{display:flex;gap:6px;overflow-x:auto;padding:4px 16px 12px;scrollbar-width:none}
+.chip{flex:none;background:var(--card);border-radius:12px;padding:7px 12px;font-size:12px;color:var(--mu)}
+.chip b{display:block;font-size:14px;font-weight:500;color:var(--tx)}
+.chip.on{background:var(--tx);color:var(--bg)}.chip.on b{color:var(--bg)}
+.day{padding:16px 16px 6px;color:var(--mu);font-size:12px;letter-spacing:.3px;text-transform:uppercase;display:flex;justify-content:space-between}
+.item,.crow{background:none;margin:0 16px;padding:11px 0;border-radius:0;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:12px}
+.ic{width:40px;height:40px;border-radius:50%;background:var(--card);display:grid;place-items:center;font-size:19px;flex:none}
 .item .m{flex:1;min-width:0}
-.item .t{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .t{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .item .c{font-size:13px;color:var(--mu)}
-.item .a{font-weight:700;white-space:nowrap}
+.item .a{font-weight:500;white-space:nowrap}
 .a.e{color:var(--exp)}.a.i{color:var(--inc)}
-.empty{text-align:center;color:var(--mu);padding:40px 20px}
-.card{background:var(--card);margin:12px;border-radius:16px;padding:14px}
-.card h4{margin:0 0 8px;font-size:15px}
-.seg{display:flex;background:var(--bg);border-radius:12px;padding:3px;margin:12px}
+.empty{text-align:center;color:var(--mu);padding:30px 20px;font-size:14px}
+.card{background:var(--card);margin:12px 16px;border-radius:16px;padding:16px}
+.card h4{margin:0 0 10px;font-size:13px;font-weight:500;color:var(--mu);letter-spacing:.3px;text-transform:uppercase}
+.seg{display:flex;background:var(--card);border-radius:12px;padding:3px;margin:4px 16px 12px}
 .card .seg,.sheet .seg{margin:0 0 12px}
-.seg button{flex:1;border:0;background:none;padding:9px;border-radius:10px;font-size:15px}
-.seg button.on{background:var(--card);box-shadow:0 1px 4px rgba(0,0,0,.15);font-weight:600}
-.seg button.on.e{color:var(--exp)}.seg button.on.i{color:var(--inc)}
+.seg button{flex:1;border:0;background:none;padding:9px;border-radius:10px;font-size:15px;color:var(--mu)}
+.seg button.on{background:var(--bg);color:var(--tx);font-weight:600;box-shadow:0 0 0 1px var(--bd)}
 svg{width:100%;height:auto;display:block}
-svg text{fill:var(--mu);font:10px system-ui}
-svg .dl{font-size:11px}svg .dv{fill:var(--tx);font-size:17px;font-weight:700}
-.lg{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--bd);font-size:15px}
-.lg i{width:12px;height:12px;border-radius:4px;flex:none}
+svg text{fill:var(--mu);font:10px -apple-system,system-ui}
+svg .dl{font-size:11px}svg .dv{fill:var(--tx);font-size:17px;font-weight:600}
+.lg{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--bd);font-size:15px}
+.lg i{width:10px;height:10px;border-radius:50%;flex:none}
 .lg span{flex:1}.lg em{color:var(--mu);font-style:normal;font-size:13px}
 .key{display:flex;gap:14px;font-size:12px;color:var(--mu);margin-bottom:4px}
-.key i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px}
-.crow{background:var(--card);margin:0 12px 6px;border-radius:14px;padding:10px 12px;display:flex;align-items:center;gap:12px;width:calc(100% - 24px);border:0;text-align:left}
+.key i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+.crow{width:calc(100% - 32px);border-top:0;border-left:0;border-right:0;text-align:left}
 .crow .m{flex:1}.crow small{display:block;color:var(--mu)}
-.addc{margin:8px 12px;width:calc(100% - 24px)}
-nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--bd);display:grid;grid-template-columns:1fr 1fr 92px 1fr 1fr;align-items:center;padding:6px 4px calc(env(safe-area-inset-bottom) + 6px);z-index:5}
-nav .t{border:0;background:none;padding:6px 0;color:var(--mu);font-size:11.5px}
-nav .t span{display:block;font-size:22px}
-nav .t.on{color:var(--ac);font-weight:600}
-#mic{position:absolute;left:50%;top:-34px;transform:translateX(-50%);width:76px;height:76px;border-radius:50%;border:4px solid var(--bg);background:linear-gradient(135deg,var(--ac),var(--ac2));color:#fff;font-size:32px;box-shadow:0 6px 18px rgba(15,118,110,.5)}
-#mic.rec{background:var(--exp);animation:p 1s infinite}
-#mic.pend{background:linear-gradient(135deg,#16a34a,#4ade80)}
-@keyframes p{50%{transform:translateX(-50%) scale(1.1)}}
-#heard{position:fixed;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom) + 150px);background:var(--tx);color:var(--bg);padding:10px 14px;border-radius:14px;font-size:15px;display:none;align-items:center;gap:10px;z-index:6;box-shadow:0 4px 16px rgba(0,0,0,.3)}
+.addc{margin:14px 16px;width:calc(100% - 32px)}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--bd);display:grid;grid-template-columns:1fr 1fr 92px 1fr 1fr;align-items:center;padding:6px 4px calc(env(safe-area-inset-bottom) + 4px);z-index:5}
+nav .t{border:0;background:none;padding:6px 0;color:var(--mu);font-size:11px}
+.ico{width:24px;height:24px;display:block;margin:0 auto 3px}
+nav .t.on{color:var(--tx)}
+#mic{position:absolute;left:50%;top:-30px;transform:translateX(-50%);width:68px;height:68px;border-radius:50%;border:5px solid var(--bg);background:var(--tx);color:var(--bg);display:grid;place-items:center;padding:0}
+#mic svg{width:28px;height:28px}
+#mic.rec{background:var(--rec);color:#fff;animation:p 1.2s infinite}
+#mic.pend{background:var(--inc);color:#fff}
+@keyframes p{50%{transform:translateX(-50%) scale(1.08)}}
+#heard{position:fixed;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom) + 150px);background:var(--tx);color:var(--bg);padding:11px 14px;border-radius:14px;font-size:15px;display:none;align-items:center;gap:10px;z-index:6}
 #heard.on{display:flex}
 #htxt{flex:1;text-align:center}
 #hx{border:0;background:rgba(128,128,128,.35);color:inherit;width:28px;height:28px;border-radius:50%;display:none}
 #heard.act #hx{display:block}
-.sw2{display:flex;justify-content:space-between;align-items:center;padding:6px 0}
-.more .tools a{display:block;margin:0;padding:14px 4px;border-top:1px solid var(--bd);text-align:left}
-#fab{position:fixed;right:16px;bottom:calc(env(safe-area-inset-bottom) + 84px);width:52px;height:52px;border-radius:50%;border:0;background:var(--card);color:var(--ac);font-size:30px;box-shadow:0 4px 14px rgba(0,0,0,.25);z-index:4}
-.sheet{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:flex-end;z-index:10}
+.sw2{display:flex;justify-content:space-between;align-items:center;padding:7px 0}
+.more .tools a{display:block;margin:0;padding:14px 0;border-top:1px solid var(--bd);text-align:left}
+#fab{position:fixed;right:16px;bottom:calc(env(safe-area-inset-bottom) + 86px);width:48px;height:48px;border-radius:50%;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font-size:28px;font-weight:300;line-height:1;z-index:4}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;z-index:10}
 .sheet.on{display:flex}
-.sheet .in{background:var(--card);width:100%;border-radius:22px 22px 0 0;padding:18px 16px calc(env(safe-area-inset-bottom) + 18px);max-height:90vh;overflow:auto}
-.sheet h3{margin:0 0 10px}
-.sheet label{display:block;font-size:13px;color:var(--mu);margin:10px 0 2px}
-.sheet input,.sheet textarea{width:100%;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font:inherit}
-.sheet input.amt{font-size:26px;font-weight:700}
-.ok{font-size:42px;text-align:center}
-.big{font-size:30px;font-weight:700;text-align:center}
-.row{display:flex;gap:8px;margin-top:14px}
-.btn{flex:1;padding:13px;border-radius:12px;border:1px solid var(--bd);background:var(--bg)}
-.btn.p{background:var(--ac);color:#fff;border:0}.btn.d{color:var(--exp)}
-.cl{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0}
-.cl button{padding:8px 12px;border-radius:20px;border:1px solid var(--bd);background:var(--bg);font-size:14px}
-.cl button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.sheet .in{background:var(--bg);width:100%;border-radius:22px 22px 0 0;padding:20px 16px calc(env(safe-area-inset-bottom) + 18px);max-height:90vh;overflow:auto}
+.sheet h3{margin:0 0 10px;font-weight:600}
+.sheet label{display:block;font-size:12px;color:var(--mu);margin:12px 0 4px;text-transform:uppercase;letter-spacing:.3px}
+.sheet input,.sheet textarea{width:100%;padding:12px;border-radius:12px;border:0;background:var(--card);color:var(--tx);font:inherit}
+.sheet input.amt{font-size:28px;font-weight:600}
+.ok{font-size:40px;text-align:center}
+.big{font-size:32px;font-weight:600;letter-spacing:-1px;text-align:center}
+.row{display:flex;gap:8px;margin-top:16px}
+.btn{flex:1;padding:13px;border-radius:12px;border:0;background:var(--card)}
+.btn.p{background:var(--tx);color:var(--bg);font-weight:600}.btn.d{color:var(--rec)}
+.cl{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.cl button{padding:8px 12px;border-radius:20px;border:0;background:var(--card);font-size:14px}
+.cl button.on{background:var(--tx);color:var(--bg)}
 .eg{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin:6px 0}
-.eg button{font-size:22px;padding:6px 0;border-radius:10px;border:2px solid transparent;background:var(--bg)}
-.eg button.on{border-color:var(--ac)}
+.eg button{font-size:21px;padding:6px 0;border-radius:10px;border:2px solid transparent;background:var(--card)}
+.eg button.on{border-color:var(--tx)}
 .sw{display:flex;flex-wrap:wrap;gap:10px;margin:6px 0}
-.sw button{width:32px;height:32px;border-radius:50%;border:3px solid transparent}
-.sw button.on{border-color:var(--tx)}
+.sw button{width:30px;height:30px;border-radius:50%;border:3px solid var(--bg);box-shadow:0 0 0 1px var(--bd)}
+.sw button.on{box-shadow:0 0 0 2px var(--tx)}
 .hint{font-size:12px;color:var(--mu);margin-top:4px}
 .tools{text-align:center;padding:12px 16px;font-size:14px}
-.tools a{color:var(--ac);display:inline-block;margin:6px 10px}
+.tools a{color:var(--tx);display:inline-block;margin:6px 10px}
 </style>
 </head>
 <body>
@@ -126,7 +127,7 @@ nav .t.on{color:var(--ac);font-weight:600}
     <div class="hint" id="mhint">Чтобы телефон не спрашивал каждый раз, выбирай «Разрешить» (не «Только сейчас»). Если уже запретил: Chrome → ⋮ → Настройки → Настройки сайтов → Микрофон → найди сайт → Разрешить.</div>
   </div>
   <div class="card more"><h4>Данные</h4>
-    <div class="tools" style="padding:0"><a href="#" id="exp">📤 Экспорт в CSV (Excel)</a><a href="#" id="bk">💾 Сохранить копию</a><a href="#" id="rs">📥 Восстановить из копии</a><a href="#" id="help">🎤 Кнопка голоса на рабочем столе</a><a href="#" id="wipe" style="color:var(--exp)">🗑️ Удалить все данные</a></div>
+    <div class="tools" style="padding:0"><a href="#" id="exp">Экспорт в CSV (Excel)</a><a href="#" id="bk">Сохранить копию</a><a href="#" id="rs">Восстановить из копии</a><a href="#" id="help">Кнопка голоса на рабочем столе</a><a href="#" id="wipe" style="color:var(--exp)">Удалить все данные</a></div>
   </div>
   <input type="file" id="file" accept=".json,application/json" hidden>
 </section>
@@ -134,12 +135,12 @@ nav .t.on{color:var(--ac);font-weight:600}
 <div id="heard"><span id="htxt"></span><button id="hx" aria-label="Отмена">✕</button></div>
 <button id="fab" aria-label="Добавить вручную">＋</button>
 <nav>
-  <button class="t on" data-tab="ops"><span>🧾</span>Операции</button>
-  <button class="t" data-tab="stats"><span>📊</span>Графики</button>
+  <button class="t on" data-tab="ops"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6h14M5 12h14M5 18h9"/></svg>Операции</button>
+  <button class="t" data-tab="stats"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Графики</button>
   <div class="sp"></div>
-  <button class="t" data-tab="cats"><span>🗂️</span>Категории</button>
-  <button class="t" data-tab="more"><span>⚙️</span>Ещё</button>
-  <button id="mic" aria-label="Говорить">🎤</button>
+  <button class="t" data-tab="cats"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.6"/><rect x="13" y="4" width="7" height="7" rx="1.6"/><rect x="4" y="13" width="7" height="7" rx="1.6"/><rect x="13" y="13" width="7" height="7" rx="1.6"/></svg>Категории</button>
+  <button class="t" data-tab="more"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="18.5" cy="12" r="1.4" fill="currentColor"/></svg>Ещё</button>
+  <button id="mic" aria-label="Говорить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></button>
 </nav>
 <div class="sheet" id="sheet"><div class="in" id="sin"></div></div>
 
@@ -195,14 +196,14 @@ function renderOps(m){
   $('cats').innerHTML=Object.entries(agg).sort((a,b)=>Math.abs(b[1].v)-Math.abs(a[1].v)).map(([id,a])=>{const c=catById(id);
     return `<div class="chip ${filter===id?'on':''}" data-c="${id}">${c.icon} ${esc(c.name)}<b>${a.v<0?'−':'+'}${fmt(Math.abs(a.v))}</b></div>`}).join('');
   const shown=(filter?m.filter(i=>i.cat===filter):m).sort((a,b)=>b.ts-a.ts);
-  if(!shown.length){$('list').innerHTML='<div class="empty">Пока пусто.<br>Нажми 🎤 и скажи «йогурт 44 рубля»<br>или ＋ для ручного ввода.</div>';return}
+  if(!shown.length){$('list').innerHTML='';return}
   const groups=[];
   shown.forEach(i=>{const k=new Date(i.ts).toDateString();let g=groups[groups.length-1];if(!g||g.k!==k){g={k,ts:i.ts,list:[]};groups.push(g)}g.list.push(i)});
   $('list').innerHTML=groups.map(g=>{
     const net=sum(g.list,'income')-sum(g.list,'expense');
     return `<div class="day"><span>${new Date(g.ts).toLocaleDateString('ru-RU',{day:'numeric',month:'long',weekday:'short'})}</span><span>${net<0?'−':net>0?'+':''}${fmt(Math.abs(net))}</span></div>`+
     g.list.map(i=>{const c=catById(i.cat);
-      return `<div class="item" data-id="${i.id}"><div class="ic" style="background:${hexA(c.color,.18)}">${c.icon}</div><div class="m"><div class="t">${esc(i.title||c.name)}</div><div class="c">${esc(c.name)}</div></div><div class="a ${i.type==='income'?'i':'e'}">${sfmt(i.amount,i.type)}</div></div>`}).join('');
+      return `<div class="item" data-id="${i.id}"><div class="ic">${c.icon}</div><div class="m"><div class="t">${esc(i.title||c.name)}</div><div class="c">${esc(c.name)}</div></div><div class="a ${i.type==='income'?'i':'e'}">${sfmt(i.amount,i.type)}</div></div>`}).join('');
   }).join('');
 }
 $('cats').onclick=e=>{const c=e.target.closest('.chip');if(!c)return;filter=filter===c.dataset.c?null:c.dataset.c;render()};
@@ -251,7 +252,7 @@ function renderCats(m){
   document.querySelectorAll('#ctype button').forEach(b=>b.classList.toggle('on',b.dataset.t===catType));
   $('clist').innerHTML=cats.filter(c=>c.type===catType).map(c=>{
     const v=m.filter(i=>i.cat===c.id).reduce((s,i)=>s+i.amount,0);
-    return `<button class="crow" data-id="${c.id}"><div class="ic" style="background:${hexA(c.color,.18)}">${c.icon}</div><div class="m"><b>${esc(c.name)}</b><small>${(c.kw||[]).length?esc(c.kw.slice(0,4).join(', '))+((c.kw.length>4)?'…':''):'без ключевых слов'}</small></div><span>${v?fmt(v):''}</span></button>`}).join('');
+    return `<button class="crow" data-id="${c.id}"><div class="ic">${c.icon}</div><div class="m"><b>${esc(c.name)}</b><small>${(c.kw||[]).length?esc(c.kw.slice(0,4).join(', '))+((c.kw.length>4)?'…':''):'без ключевых слов'}</small></div><span>${v?fmt(v):''}</span></button>`}).join('');
 }
 $('ctype').onclick=e=>{const b=e.target.closest('button');if(b){catType=b.dataset.t;render()}};
 $('clist').onclick=e=>{const b=e.target.closest('.crow');if(b)catSheet(cats.find(c=>c.id===b.dataset.id))};
@@ -395,7 +396,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
 // 'idle' -> тап -> 'listening' -> тап -> сохранить;  если распознавание оборвалось само, текст ждёт ('pending') и следующий тап сохраняет
 let rec=null,st='idle',curText='',stopReq=false,hadErr=false,hideT;
 function setSt(x){st=x;const m=$('mic');m.classList.toggle('rec',x==='listening');m.classList.toggle('pend',x==='pending');
-  m.textContent=x==='listening'?'⏹':x==='pending'?'✔️':'🎤';$('heard').classList.toggle('act',x!=='idle')}
+  m.innerHTML=x==='listening'?`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor"/></svg>`:x==='pending'?`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>`;$('heard').classList.toggle('act',x!=='idle')}
 function say(t,keep){const h=$('heard');$('htxt').textContent=t;h.classList.add('on');clearTimeout(hideT);if(!keep)hideT=setTimeout(()=>{if(st==='idle')h.classList.remove('on')},4500)}
 function joinResults(res){ // Chrome на Android присылает нарастающие повторы: «йогурт», «йогурт 44», «йогурт 44 рубля»
   const out=[];
@@ -442,7 +443,7 @@ function beginRec(cont,retry){
     if(st==='idle')return;
     if(stopReq){finish();return}
     if(hadErr){curText='';setSt('idle');return}
-    if(curText.trim()){setSt('pending');say('«'+curText+'»  — нажми 🎤, чтобы сохранить',true);return} // оборвалось само, текст сохранён
+    if(curText.trim()){setSt('pending');say('«'+curText+'»  — нажми кнопку микрофона, чтобы сохранить',true);return} // оборвалось само, текст сохранён
     const ms=Date.now()-t0;
     if(ms<2000&&retry<(IOS?0:2)){setSt('idle');say('Включаю заново…',true);setTimeout(()=>beginRec(!cont,retry+1),400);return} // мгновенный обрыв: пробуем другой режим
     setSt('idle');$('heard').classList.remove('on');dictSheet('Запись голоса тут не работает — продиктуй через клавиатуру: нажми значок микрофона на ней.')
@@ -450,7 +451,7 @@ function beginRec(cont,retry){
   try{rec.start()}catch(e){setSt('idle');say('Не удалось включить запись, попробуй ещё')}
 }
 function dictSheet(note){
-  sheet(`<h3>🎤 Скажи или напиши</h3>
+  sheet(`<h3>Скажи или напиши</h3>
   <div class="hint" style="font-size:14px;margin:0 0 8px">${note||'Нажми значок микрофона на клавиатуре телефона и скажи, например: «йогурт 44 рубля». Запишу сам, как договоришь.'}</div>
   <form id="df"><input id="dt" placeholder="йогурт 44 рубля" autocomplete="off" autocapitalize="off" enterkeyhint="done" style="font-size:20px">
   <div id="dp" style="font-size:15px;min-height:24px;margin:10px 0 0;color:var(--mu)"></div>
@@ -509,7 +510,7 @@ $('file').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileRe
   r.readAsText(f);e.target.value=''};
 $('help').onclick=e=>{e.preventDefault();if(IOS){sheet(`<h3>Быстрый доступ на iPhone</h3>
 <p><b>1.</b> Открой сайт в Safari → «Поделиться» → <b>«На экран “Домой”»</b>. Запускай приложение только с этой иконки.</p>
-<p><b>2.</b> Нажми 🎤 → откроется строка с клавиатурой → нажми <b>значок микрофона на клавиатуре</b> и скажи: «йогурт 44 рубля» → «Записать».</p>
+<p><b>2.</b> Нажми кнопку микрофона → откроется строка с клавиатурой → нажми <b>значок микрофона на клавиатуре</b> и скажи: «йогурт 44 рубля» → «Записать».</p>
 <p><b>3.</b> Чтобы иконка всегда была под рукой, положи её на первый экран или в нижний ряд.</p>
 <p>Виджета и ярлыка прямо в запись голоса из веб-приложения на iPhone сделать нельзя — это ограничение iOS.</p>
 <button class="btn p" style="width:100%" onclick="closeSheet()">Понятно</button>`);return}
