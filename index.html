@@ -177,6 +177,24 @@ body{padding-bottom:170px}
 .hdr2{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.hdr2 h3{margin:0}
 .link{border:0;background:none;color:var(--ac);padding:4px 0;font-size:15px}
 .fav{-webkit-touch-callout:none}
+
+/* ===== PIN ===== */
+#lock{position:fixed;inset:0;z-index:100;background:var(--pg);display:none;align-items:center;justify-content:center;overflow:auto}
+#lock.on{display:flex}
+.lk{width:100%;max-width:340px;padding:24px;text-align:center}
+.lt{font-family:Georgia,'Times New Roman',serif;font-size:28px;margin-bottom:6px}
+.ls{color:var(--mu);font-size:14px;min-height:20px;margin-bottom:20px}
+.dots{display:flex;gap:18px;justify-content:center;margin-bottom:28px}
+.dots i{width:15px;height:15px;border-radius:50%;border:2px solid var(--tx);transition:background .1s}
+.dots i.f{background:var(--tx)}
+.dots.sh{animation:shk .4s}
+@keyframes shk{20%{transform:translateX(-10px)}40%{transform:translateX(10px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;justify-items:center;margin-bottom:14px}
+.pad button{width:76px;height:76px;border-radius:50%;border:0;background:var(--sf);box-shadow:0 1px 2px var(--sh),0 8px 20px var(--sh);font-size:28px;font-weight:300;color:var(--tx)}
+.pad button:active{background:var(--soft)}
+.pad button.e{visibility:hidden}
+#cover{position:fixed;inset:0;z-index:99;background:var(--pg);display:none}
+body.cov #cover{display:block}
 </style>
 </head>
 <body>
@@ -216,6 +234,12 @@ body{padding-bottom:170px}
 <section class="tab more" id="t-more">
   <div class="card"><h4>Деньги</h4><div id="mrows"></div></div>
   <div class="card">
+    <h4>Безопасность</h4>
+    <div class="sw2"><span>PIN-код</span><button class="btn" id="pinb" style="flex:none;padding:8px 16px"></button></div>
+    <div class="sw2" id="lar"><span>Блокировать</span><button class="btn" id="lab" style="flex:none;padding:8px 16px"></button></div>
+    <div class="hint">PIN закрывает вход в приложение от посторонних. Данные на телефоне при этом не шифруются, а в файле резервной копии PIN не сохраняется.</div>
+  </div>
+  <div class="card">
     <h4>Голос</h4>
     <div class="sw2"><span>Звуки при записи</span><button class="btn" id="snd" style="flex:none;padding:8px 16px"></button></div>
     <div class="sw2"><span>Сохранять сразу после диктовки</span><button class="btn" id="aut" style="flex:none;padding:8px 16px"></button></div>
@@ -239,6 +263,10 @@ body{padding-bottom:170px}
   <button class="t" data-tab="more"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="18.5" cy="12" r="1.4" fill="currentColor"/></svg>Ещё</button>
   <button id="mic" aria-label="Говорить"></button>
 </nav>
+<div id="lock"><div class="lk"><div class="lt" id="lt"></div><div class="ls" id="ls"></div><div class="dots" id="dots"><i></i><i></i><i></i><i></i></div>
+<div class="pad" id="pad"><button>1</button><button>2</button><button>3</button><button>4</button><button>5</button><button>6</button><button>7</button><button>8</button><button>9</button><button class="e"></button><button>0</button><button data-k="del" aria-label="Стереть">⌫</button></div>
+<button class="link" id="lforgot">Забыл PIN</button><button class="link" id="lcancel">Отмена</button></div></div>
+<div id="cover"></div>
 <div class="sheet" id="sheet"><div class="in" id="sin"></div></div>
 
 <script src="parser.js"></script>
@@ -1100,6 +1128,7 @@ function renderMore(){
     `<button class="mr" data-o="rec"><span>Повторяющиеся платежи</span><em>${act.length?act.length+(mo?' · ≈ '+fmt(mo)+'/мес':''):'нет'}</em></button>`+
     `<button class="mr" data-o="fav"><span>Быстрые траты</span><em>${favs.length||'нет'}</em></button>`;
   if(DICTATE){$('mchk').style.display='none';$('mst').textContent='не нужен';$('mhint').textContent=IOS?'На iPhone голос вводится диктовкой клавиатуры: нажми кнопку микрофона в приложении, потом значок микрофона на клавиатуре и говори. Разрешения не нужны.':'Голосовой ввод через клавиатуру: нажми значок микрофона на ней.'}
+  $('pinb').textContent=pinRec?'Вкл':'Выкл';$('lar').style.display=pinRec?'':'none';$('lab').textContent=LA[lockAfter];
   $('snd').textContent=soundOn?'Вкл':'Выкл';$('aut').textContent=autoSave?'Вкл':'Выкл';
   (async()=>{if(DICTATE)return;let t='неизвестно';try{const s=await navigator.permissions.query({name:'microphone'});t={granted:'разрешён ✅',denied:'запрещён ⛔',prompt:'спросит при записи'}[s.state]||s.state}catch(e){}$('mst').textContent=t})();
 }
@@ -1142,7 +1171,74 @@ if(new URLSearchParams(location.search).get('voice')==='1'){
   window.addEventListener('load',()=>setTimeout(listen,300));
   history.replaceState(null,'','./');
 }
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')applyRecurring()});
+// ---------- PIN-код ----------
+let pinRec=LS('pin',null),lockAfter=LS('lockAfter',60);
+let lockMode=null,lockBuf='',lockTmp='',lockCb=null,lockFails=0,lockUntil=0,hiddenAt=0;
+async function hashPin(pin,salt){
+  const h=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(salt+':'+pin));
+  return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+const LOCKT={unlock:['Расходы','Введи PIN'],verify:['Введи текущий PIN',''],set1:['Придумай PIN','4 цифры'],set2:['Повтори PIN','Ещё раз, чтобы не ошибиться']};
+function paintLock(msg){
+  const t=LOCKT[lockMode];$('lt').textContent=t[0];$('ls').textContent=msg||t[1];
+  document.querySelectorAll('#dots i').forEach((d,k)=>d.classList.toggle('f',k<lockBuf.length));
+  $('lforgot').style.display=lockMode==='unlock'||lockMode==='verify'?'':'none';
+  $('lcancel').style.display=lockMode==='unlock'?'none':'';
+}
+function openLock(mode,cb){
+  closeSheet();lockMode=mode;lockBuf='';lockTmp='';lockCb=cb||null;paintLock();$('lock').classList.add('on');
+}
+function closeLock(){$('lock').classList.remove('on');lockMode=null}
+async function lockKey(k){
+  if(!lockMode)return;
+  if(k==='del'){lockBuf=lockBuf.slice(0,-1);paintLock();return}
+  if(lockBuf.length>=4)return;
+  lockBuf+=k;vib(8);paintLock();
+  if(lockBuf.length<4)return;
+  const pin=lockBuf,wrong=msg=>{$('dots').classList.remove('sh');void $('dots').offsetWidth;$('dots').classList.add('sh');lockBuf='';setTimeout(()=>paintLock(msg),250);vib([40,40,40])};
+  if(lockMode==='unlock'||lockMode==='verify'){
+    if(Date.now()<lockUntil){wrong('Подожди '+Math.ceil((lockUntil-Date.now())/1000)+' с');return}
+    const ok=pinRec&&await hashPin(pin,pinRec.salt)===pinRec.hash;
+    if(ok){lockFails=0;const cb=lockCb;closeLock();if(cb)cb();return}
+    lockFails++;
+    if(lockFails>=5){lockUntil=Date.now()+30000*(lockFails-4);wrong('Слишком много попыток. Подожди '+30*(lockFails-4)+' с')}
+    else wrong('Неверный PIN. Осталось попыток: '+(5-lockFails));
+  }else if(lockMode==='set1'){
+    lockTmp=pin;lockBuf='';lockMode='set2';paintLock();
+  }else if(lockMode==='set2'){
+    if(pin!==lockTmp){lockMode='set1';wrong('PIN не совпал. Придумай заново');setTimeout(()=>paintLock('PIN не совпал. Придумай заново'),260);return}
+    const salt=Math.random().toString(36).slice(2)+Date.now().toString(36);
+    pinRec={salt,hash:await hashPin(pin,salt)};save('pin',pinRec);
+    const cb=lockCb;closeLock();renderMore();toast('PIN включён');if(cb)cb();
+  }
+}
+$('pad').onclick=e=>{const b=e.target.closest('button');if(!b||b.classList.contains('e'))return;lockKey(b.dataset.k||b.textContent.trim())};
+$('lcancel').onclick=()=>closeLock();
+$('lforgot').onclick=()=>{
+  if(confirm('Без PIN войти нельзя. Можно стереть все данные приложения на этом телефоне и начать заново (потом — восстановить из резервной копии, если она есть). Стереть?')){
+    try{localStorage.clear()}catch(e){}location.reload();
+  }
+};
+const LA={0:'сразу',60:'через 1 мин',300:'через 5 мин'};
+function pinSheet(){
+  if(!pinRec){sheet(`<h3>PIN-код</h3><p>Включи, чтобы приложение просило PIN при входе. Отключить можно в любой момент здесь же.</p><div class="row"><button class="btn" id="c">Закрыть</button><button class="btn p" id="on">Включить PIN</button></div>`);
+    $('c').onclick=closeSheet;$('on').onclick=()=>openLock('set1');return}
+  sheet(`<h3>PIN-код включён</h3><div class="row"><button class="btn" id="ch">Сменить PIN</button><button class="btn d" id="off">Отключить PIN</button></div><div class="row"><button class="btn" id="c">Закрыть</button></div>`);
+  $('c').onclick=closeSheet;
+  $('ch').onclick=()=>openLock('verify',()=>openLock('set1'));
+  $('off').onclick=()=>openLock('verify',()=>{pinRec=null;save('pin',null);renderMore();toast('PIN отключён')});
+}
+$('pinb').onclick=pinSheet;
+$('lab').onclick=()=>{const v=[0,60,300];lockAfter=v[(v.indexOf(lockAfter)+1)%3];save('lockAfter',lockAfter);renderMore()};
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='hidden'){hiddenAt=Date.now();if(pinRec)document.body.classList.add('cov')}
+  else{
+    document.body.classList.remove('cov');
+    if(pinRec&&hiddenAt&&Date.now()-hiddenAt>=lockAfter*1000&&!$('lock').classList.contains('on'))openLock('unlock');
+    applyRecurring();
+  }
+});
+if(pinRec)openLock('unlock');
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
 applyRecurring();
 render();
