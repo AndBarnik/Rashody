@@ -1238,7 +1238,7 @@ const DAYNAME=o=>o===0?'':o===-1?'вчера':o===-2?'позавчера':'';
 function dictSheet(note){
   sheet(`<h3>Скажи или напиши</h3>
   ${note?`<div class="hint" style="font-size:14px;margin:0 0 8px">${esc(note)}</div>`:''}
-  <form id="df"><textarea id="dt" rows="3" autocomplete="off" autocapitalize="off" style="font-size:18px" placeholder="Что потратил?"></textarea>
+  <form id="df"><textarea id="dt" rows="3" autocomplete="off" autocapitalize="off" style="font-size:18px" placeholder="Траты и доходы за день"></textarea>
   <div class="dp" id="dp"></div>
   <div class="row"><button type="button" class="btn" id="dc">Отмена</button><button class="btn p" id="ds">Записать</button></div></form>`);
   let lastKey=0,tm=null,sent=false,okN=0;
