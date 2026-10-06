@@ -121,6 +121,7 @@ nav .t.on{color:var(--ac);font-weight:600}
   <div class="card">
     <h4>Голос</h4>
     <div class="sw2"><span>Звуки при записи</span><button class="btn" id="snd" style="flex:none;padding:8px 16px"></button></div>
+    <div class="sw2"><span>Сохранять сразу после диктовки</span><button class="btn" id="aut" style="flex:none;padding:8px 16px"></button></div>
     <div class="sw2"><span>Микрофон: <b id="mst">…</b></span><button class="btn" id="mchk" style="flex:none;padding:8px 16px">Разрешить</button></div>
     <div class="hint" id="mhint">Чтобы телефон не спрашивал каждый раз, выбирай «Разрешить» (не «Только сейчас»). Если уже запретил: Chrome → ⋮ → Настройки → Настройки сайтов → Микрофон → найди сайт → Разрешить.</div>
   </div>
@@ -378,7 +379,7 @@ const IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='M
 const STANDALONE=!!(navigator.standalone||(window.matchMedia&&matchMedia('(display-mode: standalone)').matches));
 // iPhone-приложение с экрана «Домой» не умеет встроенное распознавание -> диктуем через клавиатуру
 const DICTATE=(IOS&&STANDALONE)||!SR;
-let soundOn=LS('sound',true);
+let soundOn=LS('sound',true),autoSave=LS('auto',true);
 function tone(seq){
   if(!soundOn)return;
   try{const AC=new (window.AudioContext||window.webkitAudioContext)();let t=AC.currentTime;
@@ -450,15 +451,21 @@ function beginRec(cont,retry){
 }
 function dictSheet(note){
   sheet(`<h3>🎤 Скажи или напиши</h3>
-  <div class="hint" style="font-size:14px;margin:0 0 8px">${note||'Нажми значок микрофона на клавиатуре телефона и скажи, например: «йогурт 44 рубля».'}</div>
+  <div class="hint" style="font-size:14px;margin:0 0 8px">${note||'Нажми значок микрофона на клавиатуре телефона и скажи, например: «йогурт 44 рубля». Запишу сам, как договоришь.'}</div>
   <form id="df"><input id="dt" placeholder="йогурт 44 рубля" autocomplete="off" autocapitalize="off" enterkeyhint="done" style="font-size:20px">
   <div id="dp" style="font-size:15px;min-height:24px;margin:10px 0 0;color:var(--mu)"></div>
   <div class="row"><button type="button" class="btn" id="dc">Отмена</button><button class="btn p" id="ds">Записать</button></div></form>`);
   const upd=()=>{const t=$('dt').value.trim();if(!t){$('dp').textContent='';return}
     const p=Parser.parse(t,cats,learned),c=catById(p.cat);
     $('dp').textContent=p.amount>0?`${c.icon} ${c.name} · ${sfmt(p.amount,p.type)}${p.title?' · '+p.title:''}`:'Добавь сумму: «… 44 рубля»'};
-  $('dt').oninput=upd;$('dc').onclick=closeSheet;
-  $('df').onsubmit=e=>{e.preventDefault();const t=$('dt').value;closeSheet();handle(t)};
+  let lastKey=0,tm=null,sent=false;
+  const submit=()=>{if(sent)return;sent=true;clearTimeout(tm);const t=$('dt').value;closeSheet();handle(t)};
+  // автосохранение: текст перестал меняться, есть сумма, и это была диктовка (клавиши не нажимались)
+  const arm=()=>{clearTimeout(tm);if(!autoSave)return;const p=Parser.parse($('dt').value,cats,learned);if(!(p.amount>0))return;
+    tm=setTimeout(()=>{if(!$('dt')||Date.now()-lastKey<2500)return;submit()},1400)};
+  $('dt').addEventListener('keydown',()=>{lastKey=Date.now();clearTimeout(tm)});
+  $('dt').oninput=()=>{upd();arm()};$('dc').onclick=()=>{sent=true;clearTimeout(tm);closeSheet()};
+  $('df').onsubmit=e=>{e.preventDefault();submit()};
   $('dt').focus();
 }
 function listen(){
@@ -481,9 +488,10 @@ $('next').onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()+1,1);ren
 function download(name,mime,text){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:mime}));a.download=name;a.click()}
 function renderMore(){
   if(DICTATE){$('mchk').style.display='none';$('mst').textContent='не нужен';$('mhint').textContent=IOS?'На iPhone голос вводится диктовкой клавиатуры: нажми 🎤 в приложении, потом значок микрофона на клавиатуре и говори. Разрешения не нужны.':'Голосовой ввод через клавиатуру: нажми значок микрофона на ней.'}
-  $('snd').textContent=soundOn?'Вкл':'Выкл';
+  $('snd').textContent=soundOn?'Вкл':'Выкл';$('aut').textContent=autoSave?'Вкл':'Выкл';
   (async()=>{let t='неизвестно';try{const s=await navigator.permissions.query({name:'microphone'});t={granted:'разрешён ✅',denied:'запрещён ⛔',prompt:'спросит при записи'}[s.state]||s.state}catch(e){}$('mst').textContent=t})();
 }
+$('aut').onclick=()=>{autoSave=!autoSave;save('auto',autoSave);renderMore()};
 $('snd').onclick=()=>{soundOn=!soundOn;save('sound',soundOn);renderMore();SND.done()};
 $('mchk').onclick=async()=>{const ok=await micAllowed();await renderMore();if(!ok)say('Доступ запрещён — открой настройки сайта в Chrome (подсказка ниже)')};
 $('wipe').onclick=e=>{e.preventDefault();sheet(`<h3>Удалить все данные?</h3><p>Все записи и свои категории будут стёрты на этом телефоне. Сначала можно сохранить копию.</p><div class="row"><button class="btn" id="n">Отмена</button><button class="btn d" id="y">Удалить всё</button></div>`);
