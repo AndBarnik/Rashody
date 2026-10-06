@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#1b1b1d" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f1ece3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#171411" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -96,6 +96,34 @@ nav .t.on{color:var(--tx);background:var(--soft);border-color:var(--bd)}
 .hint{font-size:12px;color:var(--mu);margin-top:4px}
 .tools{text-align:center;padding:12px 16px;font-size:14px}
 .tools a{color:var(--tx);display:inline-block;margin:6px 10px}
+
+/* ===== Тёплая тема ===== */
+:root{--pg:#f1ece3;--sf:#fbf8f2;--soft:#eee7da;--tx:#2b251e;--mu:#8f8574;--on:#fbf8f2;--bd:#e6decf;--exp:#2b251e;--inc:#5d8a5b;--rec:#c2562f;--ac:#c2562f;--sh:rgba(60,40,10,.05);--sh2:rgba(60,40,10,.18)}
+@media(prefers-color-scheme:dark){:root{--pg:#171411;--sf:#221e19;--soft:#2d2822;--tx:#f1e9dc;--mu:#9a8f7d;--on:#171411;--bd:#342e27;--exp:#f1e9dc;--inc:#93c291;--rec:#e0704a;--ac:#c2562f;--sh:rgba(0,0,0,.25);--sh2:rgba(0,0,0,.5)}}
+html,body{background:var(--pg)}
+.bal,.big,svg .dv{font-family:Georgia,'Times New Roman',serif;font-weight:500;letter-spacing:-1px}
+header{background:transparent;border:0;box-shadow:none;border-radius:0;margin-bottom:6px}
+.month button{background:var(--sf);border-color:transparent;box-shadow:0 1px 3px var(--sh2)}
+.sub>div,.item,.card,.crow,.chip,.seg{border-color:transparent;background:var(--sf);box-shadow:0 1px 2px var(--sh),0 8px 20px var(--sh)}
+.item,.crow{border-radius:20px}.card{border-radius:24px}
+.ic{background:var(--soft);border-color:transparent}
+.chip.on{background:var(--ac);border-color:var(--ac);color:#fff}.chip.on b{color:#fff}
+.seg button.on{background:var(--ac);color:#fff}
+.btn.p{background:var(--ac);border-color:var(--ac);color:#fff}
+.cl button.on{background:var(--ac);border-color:var(--ac);color:#fff}
+.eg button.on{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac)}
+.sw button.on{box-shadow:0 0 0 2px var(--ac)}
+nav{left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom) + 8px);border:0;border-radius:32px;background:var(--sf);box-shadow:0 8px 30px var(--sh2)}
+nav .t.on{background:var(--soft);border-color:transparent;color:var(--ac)}
+#mic{background:var(--ac);color:#fff;border-color:var(--pg);box-shadow:0 8px 20px rgba(194,86,47,.4)}
+#mic.rec{background:var(--rec)}
+#fab{background:var(--sf);border-color:transparent;box-shadow:0 6px 16px var(--sh2)}
+.sheet .in{border-top:0;border-radius:28px 28px 0 0}
+.sheet input,.sheet textarea{border-color:transparent}
+.btn,.cl button,.eg button{border-color:transparent}
+body{padding-bottom:170px}
+.sheet input:focus,.sheet textarea:focus{outline:2px solid var(--ac);outline-offset:0}
+.tools a{text-decoration:none}
 </style>
 </head>
 <body>
