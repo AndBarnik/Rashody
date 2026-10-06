@@ -178,6 +178,15 @@ body{padding-bottom:170px}
 .link{border:0;background:none;color:var(--ac);padding:4px 0;font-size:15px}
 .fav{-webkit-touch-callout:none}
 
+/* ===== Устойчивость на iPhone: без бокового «гуляния» и без прокрутки страницы под окном ===== */
+html,body{overflow-x:hidden}
+body.nosc{position:fixed;left:0;right:0;width:100%;overflow:hidden}
+.sheet{touch-action:none;overscroll-behavior:contain}
+.sheet .in{overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch}
+.sheet input,.sheet textarea{min-width:0;max-width:100%}
+.sheet input[type=date]{display:block;width:100%;min-height:46px;-webkit-appearance:none;appearance:none;text-align:left}
+.row{flex-wrap:wrap}.row .btn{flex:1 1 92px;min-width:0}
+#lock{overscroll-behavior:contain;touch-action:pan-y}
 /* ===== Итоги недели, метки, цели ===== */
 .wkb{display:flex;align-items:center;gap:8px;margin:0 16px 10px;background:var(--sf);border-radius:16px;padding:8px 8px 8px 14px;box-shadow:0 1px 2px var(--sh),0 8px 20px var(--sh)}
 .wkb .o{flex:1;text-align:left;border:0;background:none;font-size:14px;padding:6px 0}
@@ -641,8 +650,14 @@ function deleteCat(c){
 }
 
 // ---------- Окна и подсказки ----------
-function sheet(html){$('sin').innerHTML=html;$('sheet').classList.add('on')}
-function closeSheet(){$('sheet').classList.remove('on');clearTimeout(confirmSheet.t)}
+let lockY=0;
+function lockBody(on){
+  const b=document.body,has=b.classList.contains('nosc');
+  if(on&&!has){lockY=window.scrollY;b.style.top=-lockY+'px';b.classList.add('nosc')}
+  else if(!on&&has){b.classList.remove('nosc');b.style.top='';window.scrollTo(0,lockY)}
+}
+function sheet(html){$('sin').innerHTML=html;$('sheet').classList.add('on');$('sin').scrollTop=0;lockBody(true)}
+function closeSheet(){$('sheet').classList.remove('on');clearTimeout(confirmSheet.t);if(!$('lock').classList.contains('on'))lockBody(false)}
 $('sheet').onclick=e=>{if(e.target.id==='sheet')closeSheet()};
 function toast(msg,undo){
   const t=$('toast');t.innerHTML=`<span>${esc(msg)}</span>${undo?'<button id="tu">Отменить</button>':''}`;t.classList.add('on');
@@ -1358,9 +1373,9 @@ function paintLock(msg){
   $('lcancel').style.display=lockMode==='unlock'?'none':'';
 }
 function openLock(mode,cb){
-  closeSheet();lockMode=mode;lockBuf='';lockTmp='';lockCb=cb||null;paintLock();$('lock').classList.add('on');
+  closeSheet();lockMode=mode;lockBuf='';lockTmp='';lockCb=cb||null;paintLock();$('lock').classList.add('on');lockBody(true);
 }
-function closeLock(){$('lock').classList.remove('on');lockMode=null}
+function closeLock(){$('lock').classList.remove('on');lockMode=null;if(!$('sheet').classList.contains('on'))lockBody(false)}
 async function lockKey(k){
   if(!lockMode)return;
   if(k==='del'){lockBuf=lockBuf.slice(0,-1);paintLock();return}
