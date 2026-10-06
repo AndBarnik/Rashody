@@ -178,6 +178,12 @@ body{padding-bottom:170px}
 .link{border:0;background:none;color:var(--ac);padding:4px 0;font-size:15px}
 .fav{-webkit-touch-callout:none}
 
+/* калькулятор и удаление в списках */
+#ecalc,#fcalc,#rcalc,#dcalc,#tcalc,#ccalc,#gcalc{display:none}
+.ops button[data-o="="]{background:var(--ac);color:#fff}
+.lw{display:flex;align-items:center;border-top:1px solid var(--bd)}.lw.first{border-top:0}
+.lw .lr{border-top:0;flex:1;min-width:0}
+.lx{flex:none;width:40px;height:40px;border:0;border-radius:50%;background:var(--soft);color:var(--rec);display:grid;place-items:center;margin-left:6px;padding:0}
 /* крестик закрытия окна */
 .sx{position:sticky;top:0;float:right;z-index:3;width:34px;height:34px;margin:-6px -4px 0 10px;border-radius:50%;border:0;background:var(--soft);color:var(--mu);font-size:15px;line-height:1;display:grid;place-items:center;padding:0}
 /* ===== Устойчивость на iPhone: без бокового «гуляния» и без прокрутки страницы под окном ===== */
@@ -460,6 +466,15 @@ $('sq').oninput=e=>{flt.q=e.target.value;render()};
 $('vbtn').onclick=()=>{vmode=vmode==='cal'?'list':'cal';save('vmode',vmode);if(vmode==='cal'){flt.period='month';calSel=null}render()};
 $('fbtn').onclick=filterSheet;
 
+// защита от случайных дублей: одинаковая запись не добавляется дважды за 2,5 секунды
+const recentAdds=[];
+function freshOnly(arr){
+  const now=Date.now(),key=o=>[o.type,o.amount,o.title,o.cat,o.acc,o.to].join('|');
+  while(recentAdds.length&&now-recentAdds[0].t>2500)recentAdds.shift();
+  const out=arr.filter(o=>!recentAdds.some(r=>r.k===key(o)));
+  out.forEach(o=>recentAdds.push({k:key(o),t:now}));
+  return out;
+}
 let swiped=0;
 function openItem(id){const it=items.find(x=>x.id==id);if(!it)return;it.type==='transfer'?transferSheet(it):entrySheet(it)}
 $('list').onclick=e=>{if(Date.now()-swiped<500)return;const w=e.target.closest('.swp');if(w)openItem(w.dataset.id)};
@@ -481,14 +496,15 @@ function duplicate(id){
   L.addEventListener('touchmove',e=>{
     if(!sel)return;
     const x=e.touches[0].clientX-sx,y=e.touches[0].clientY-sy;
-    if(!drag){if(Math.abs(y)>10&&Math.abs(y)>Math.abs(x)){sel.style.transition='';sel=null;return}if(Math.abs(x)>10&&Math.abs(x)>Math.abs(y))drag=true;else return}
+    if(!drag){if(Math.abs(y)>8&&Math.abs(y)>Math.abs(x)*0.6){sel.style.transition='';sel=null;return}if(Math.abs(x)>16&&Math.abs(x)>Math.abs(y)*2)drag=true;else return}
+    if(Math.abs(y)>45){const it=sel;sel=null;drag=false;it.style.transition='transform .2s';it.style.transform='';try{it.parentNode.dataset.dir=''}catch(e){}return}
     e.preventDefault();dx=Math.max(-150,Math.min(150,x));
     sel.style.transform=`translateX(${dx}px)`;sel.parentNode.dataset.dir=dx>0?'l':dx<0?'r':'';
   },{passive:false});
   const end=()=>{
     if(!sel)return;const it=sel,wasDrag=drag,id=it.parentNode.dataset.id,d=dx;sel=null;
     it.style.transition='transform .2s';it.style.transform='';setTimeout(()=>{try{it.parentNode.dataset.dir=''}catch(e){}},200);
-    if(wasDrag){swiped=Date.now();if(d>90)duplicate(id);else if(d<-90)removeItem(id)}
+    if(wasDrag){swiped=Date.now();if(d>110)duplicate(id);else if(d<-110)removeItem(id)}
   };
   L.addEventListener('touchend',end);L.addEventListener('touchcancel',end);
 })();
@@ -503,6 +519,7 @@ $('favs').onclick=e=>{
   if(flpFired){flpFired=false;return}
   const f=favs.find(x=>x.id==b.dataset.id);if(!f)return;
   const it={id:uid(),ts:Date.now(),type:f.type,amount:f.amount,title:f.title,cat:f.cat,acc:f.acc||defAcc()};
+  if(!freshOnly([it]).length){toast('Уже добавлено');return}
   items.push(it);persist();resetPeriod();view=new Date();view.setDate(1);render();vib(40);
   const bm=budgetMsg(it);
   toast('Добавлено: '+(f.title||catById(f.cat).name)+' '+sfmt(f.amount,f.type)+(bm?' · '+bm:''),()=>{items=items.filter(x=>x.id!==it.id);persist();render()});
@@ -605,7 +622,7 @@ function catSheet(c){
   sheet(`<h3>${isNew?'Новая категория':'Категория'}</h3>
   ${isNew?`<div class="seg" id="cts"><button data-t="expense" class="e">Расход</button><button data-t="income" class="i">Доход</button></div>`:''}
   <label>Название</label><input id="cn" value="${esc(d.name)}" placeholder="Например: Спорт">
-  <div id="cbw"><label>Лимит на месяц, ₽ (необязательно)</label><input id="cb" type="number" inputmode="decimal" min="0" value="${d.budget>0?d.budget:''}" placeholder="Например: 20000"></div>
+  <div id="cbw"><label>Лимит на месяц, ₽ (необязательно)</label><input id="cb" type="text" inputmode="decimal" data-g="1" autocomplete="off" value="${d.budget>0?gv(d.budget):''}" placeholder="Например: 20 000"></div>
   <label>Иконка</label><div class="eg" id="eg">${EMOJI.map(e=>`<button data-e="${e}">${e}</button>`).join('')}</div>
   <input id="ci" value="${esc(d.icon)}" placeholder="или вставь свой смайлик" style="font-size:20px">
   <label>Цвет</label><div class="sw" id="sw">${COLORS.map(x=>`<button data-c="${x}" style="background:${x}"></button>`).join('')}</div>
@@ -627,7 +644,7 @@ function catSheet(c){
     d.name=$('cn').value.trim();if(!d.name){$('cn').focus();return}
     d.icon=$('ci').value.trim()||d.icon;
     d.kw=$('ck').value.split(/[,;\n]/).map(s=>Parser.norm(s).trim()).filter(Boolean);
-    const b=parseFloat($('cb').value);if(d.type==='expense'&&b>0)d.budget=b;else delete d.budget;
+    const b=calcVal($('cb').value);if(d.type==='expense'&&b>0)d.budget=b;else delete d.budget;
     if(isNew)cats.push(d);else{delete c.budget;Object.assign(c,d)}
     catType=d.type;persist();closeSheet();render();
   };
@@ -659,7 +676,9 @@ function lockBody(on){
   else if(!on&&has){b.classList.remove('nosc');b.style.top='';window.scrollTo(0,lockY)}
 }
 function sheet(html){$('sin').innerHTML=(html.includes('class="hdr2"')?'':'<button type="button" class="sx" aria-label="Закрыть" onclick="closeSheet()">✕</button>')+html;$('sheet').classList.add('on');$('sin').scrollTop=0;lockBody(true)}
-function closeSheet(){$('sheet').classList.remove('on');clearTimeout(confirmSheet.t);if(!$('lock').classList.contains('on'))lockBody(false)}
+let uiBlock=0;
+document.addEventListener('click',e=>{if(Date.now()<uiBlock&&!e.target.closest('.sheet,#lock,#toast')){e.stopPropagation();e.preventDefault()}},true);
+function closeSheet(){$('sheet').classList.remove('on');clearTimeout(confirmSheet.t);clearTimeout(window._dtm);uiBlock=Date.now()+250;if(!$('lock').classList.contains('on'))lockBody(false)}
 $('sheet').onclick=e=>{if(e.target.id==='sheet')closeSheet()};
 function toast(msg,undo){
   const t=$('toast');t.innerHTML=`<span>${esc(msg)}</span>${undo?'<button id="tu">Отменить</button>':''}`;t.classList.add('on');
@@ -672,12 +691,24 @@ function calcVal(str){
   if(!s||!/^[\d+\-*/().]+$/.test(s))return NaN;
   try{const v=Function('"use strict";return ('+s+')')();return typeof v==='number'&&isFinite(v)?Math.round(v*100)/100:NaN}catch(e){return NaN}
 }
-const opsRow=id=>`<div class="ops" data-for="${id}">${['+','−','×','÷'].map(o=>`<button type="button" data-o="${o}">${o}</button>`).join('')}</div>`;
-function wireCalc(id,hint){
-  const inp=$(id),upd=()=>{const v=inp.value;if(hint&&$(hint))$(hint).textContent=/[+\-−×x*÷\/]/.test(v.replace(/^-/,''))&&!isNaN(calcVal(v))?'= '+fmt(calcVal(v)):''};
-  inp.addEventListener('input',upd);
-  document.querySelectorAll(`.ops[data-for="${id}"] button`).forEach(b=>b.onclick=()=>{inp.value+=b.dataset.o;inp.focus();upd()});
-  upd();
+const opsRow=id=>`<div class="ops" data-for="${id}">${['+','−','×','÷','='].map(o=>`<button type="button" data-o="${o}">${o}</button>`).join('')}</div>`;
+// разряды: 20000 -> 20 000 (в полях сумм; пробелы при расчёте игнорируются)
+function groupStr(t){return t.replace(/\d+(?:[.,]\d*)?/g,m=>{const p=m.split(/([.,])/);return p[0].replace(/\B(?=(\d{3})+(?!\d))/g,' ')+p.slice(1).join('')})}
+function gv(v){return v===''||v==null?'':groupStr(String(v).replace('.',','))}
+function regroup(el){
+  const old=el.value,pos=el.selectionStart==null?old.length:el.selectionStart;
+  const n=old.slice(0,pos).replace(/\s/g,'').length,nv=groupStr(old.replace(/\s+/g,''));
+  if(nv===old)return;
+  el.value=nv;let c=0,k=0;while(k<nv.length&&c<n){if(!/\s/.test(nv[k]))c++;k++}
+  try{el.setSelectionRange(k,k)}catch(e){}
+}
+$('sin').addEventListener('input',e=>{if(e.target.dataset&&e.target.dataset.g)regroup(e.target)});
+function wireCalc(id){
+  const inp=$(id);inp.dataset.g='1';
+  document.querySelectorAll(`.ops[data-for="${id}"] button`).forEach(b=>b.onclick=()=>{
+    if(b.dataset.o==='='){const v=calcVal(inp.value);if(!isNaN(v))inp.value=gv(v);inp.focus();return}  // результат — в той же строке
+    inp.value=groupStr(inp.value.replace(/\s+/g,'')+b.dataset.o);inp.focus();
+  });
 }
 const pl=(n,a)=>{const m=n%100,k=n%10;return n+' '+(m>10&&m<20?a[2]:k===1?a[0]:k>1&&k<5?a[1]:a[2])};
 const normTag=s=>Parser.norm(String(s)).replace(/^#+/,'').replace(/[^a-zа-я0-9_-]+/g,'').slice(0,24);
@@ -696,9 +727,9 @@ function entrySheet(it,pre){
   if(!d.cat||catById(d.cat).type!==d.type)d.cat=(Parser.fallbackOf(cats,d.type)||{}).id;
   sheet(`<h3>${isNew?'Новая запись':'Изменить запись'}</h3>
   <div class="seg" id="ets"><button data-t="expense" class="e">Расход</button><button data-t="income" class="i">Доход</button></div>
-  <label>Сумма, ₽</label><input class="amt" id="ea" type="text" inputmode="decimal" value="${d.amount}" placeholder="0" autocomplete="off">
+  <label>Сумма, ₽</label><input class="amt" id="ea" type="text" inputmode="decimal" value="${gv(d.amount)}" placeholder="0" autocomplete="off">
   ${opsRow('ea')}<div id="ecalc"></div>
-  <label>На что / откуда</label><input id="et" value="${esc(d.title||'')}" placeholder="Например: йогурт" autocomplete="off">
+  <label>На что / откуда</label><input id="et" value="${esc(d.title||'')}" autocomplete="off">
   <label>Категория</label><div class="cl" id="ecl"></div>
   ${accts.length>1?`<label>Счёт</label><div class="cl" id="eac"></div>`:''}
   <label>Метки</label><div class="cl" id="etg"></div><input id="etn" placeholder="Новая метка, например: отпуск" autocomplete="off" autocapitalize="off">
@@ -738,6 +769,7 @@ function entrySheet(it,pre){
     if(touched&&d.title){const w=Parser.norm(d.title).split(/\s+/).filter(x=>x.length>2);const g=Parser.categorize(w,cats,{},d.type);
       if(!g||g.id!==d.cat)w.forEach(x=>learned[x]=d.cat)}
     addTags();lastAcc=d.acc;
+    if(isNew&&!freshOnly([d]).length){closeSheet();toast('Уже добавлено');return}
     if(isNew)items.push(d);else Object.assign(it,d);
     {const o=isNew?d:it;if(!o.tags||!o.tags.length)delete o.tags}
     persist();closeSheet();
@@ -814,7 +846,7 @@ function favSheet(f,ret){
   <div class="hint" style="margin:0 0 6px">Кнопка над списком: одно касание — запись добавлена. Удерживай кнопку, чтобы изменить.</div>
   <div class="seg" id="fts"><button data-t="expense" class="e">Расход</button><button data-t="income" class="i">Доход</button></div>
   <label>Название</label><input id="ft" value="${esc(d.title||'')}" placeholder="Например: Кофе" autocomplete="off">
-  <label>Сумма, ₽</label><input class="amt" id="fa" type="text" inputmode="decimal" value="${d.amount}" placeholder="0" autocomplete="off">
+  <label>Сумма, ₽</label><input class="amt" id="fa" type="text" inputmode="decimal" value="${gv(d.amount)}" placeholder="0" autocomplete="off">
   ${opsRow('fa')}<div id="fcalc"></div>
   <label>Категория</label><div class="cl" id="fcl"></div>
   ${accts.length>1?'<label>Счёт</label><div class="cl" id="fac2"></div>':''}
@@ -838,13 +870,18 @@ function favSheet(f,ret){
     persist();back();
   };
 }
+const TRASH='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12h10l1-12M9 7V4h6v3"/></svg>';
 function favListSheet(){
   sheet(`<div class="hdr2"><h3>Быстрые траты</h3><button class="link" id="x">Закрыть</button></div>
-  <div class="hint" style="margin:0 0 6px">Появляются кнопками над списком операций. Нажатие сразу добавляет запись.</div>
-  ${favs.map((f,k)=>{const c=catById(f.cat);return `<button class="lr ${k?'':'first'}" data-id="${f.id}"><div class="ic">${c.icon}</div><div class="m"><b>${esc(f.title||c.name)}</b><small>${esc(c.name)}</small></div><div class="a ${f.type==='income'?'i':'e'}">${sfmt(f.amount,f.type)}</div></button>`}).join('')||'<div class="empty">Пока нет ни одной</div>'}
+  <div class="hint" style="margin:0 0 6px">Появляются кнопками над списком операций. Нажатие сразу добавляет запись. Корзина справа удаляет кнопку.</div>
+  ${favs.map((f,k)=>{const c=catById(f.cat);return `<div class="lw ${k?'':'first'}"><button class="lr" data-id="${f.id}"><div class="ic">${c.icon}</div><div class="m"><b>${esc(f.title||c.name)}</b><small>${esc(c.name)}</small></div><div class="a ${f.type==='income'?'i':'e'}">${sfmt(f.amount,f.type)}</div></button><button class="lx" data-del="${f.id}" aria-label="Удалить">${TRASH}</button></div>`}).join('')||'<div class="empty">Пока нет ни одной</div>'}
   <div class="row"><button class="btn p" id="add">＋ Добавить</button></div>`);
   $('x').onclick=closeSheet;$('add').onclick=()=>favSheet(null,favListSheet);
   document.querySelectorAll('.lr[data-id]').forEach(b=>b.onclick=()=>favSheet(favs.find(f=>f.id==b.dataset.id),favListSheet));
+  document.querySelectorAll('.lx[data-del]').forEach(b=>b.onclick=()=>{
+    const f=favs.find(x=>x.id==b.dataset.del);if(!f)return;
+    if(confirm('Удалить быструю трату «'+(f.title||catById(f.cat).name)+'»?')){favs=favs.filter(x=>x!==f);persist();render();favListSheet()}
+  });
 }
 
 // ---------- Счета и переводы ----------
@@ -860,13 +897,13 @@ function accEdit(a){
   sheet(`<h3>${isNew?'Новый счёт':'Счёт'}</h3>
   <label>Название</label><input id="an" value="${esc(d.name)}" placeholder="Например: Сбербанк" autocomplete="off">
   <label>Иконка</label><div class="eg" id="ae" style="grid-template-columns:repeat(8,1fr)">${ACC_EMOJI.map(e=>`<button data-e="${e}">${e}</button>`).join('')}</div>
-  <label>Начальный остаток, ₽</label><input id="as" type="number" inputmode="decimal" step="0.01" value="${d.start||0}">
+  <label>Начальный остаток, ₽</label><input id="as" type="text" inputmode="decimal" data-g="1" autocomplete="off" value="${gv(d.start||0)}">${opsRow('as')}
   <div class="hint">Остаток на сегодня = начальный остаток + все записи этого счёта.</div>
   <div class="row">${isNew||accts.length<2?'':'<button class="btn d" id="ad">Удалить</button>'}<button class="btn" id="ac">Отмена</button><button class="btn p" id="asv">Сохранить</button></div>`);
-  const paint=()=>document.querySelectorAll('#ae button').forEach(b=>b.classList.toggle('on',b.dataset.e===d.icon));paint();
+  const paint=()=>document.querySelectorAll('#ae button').forEach(b=>b.classList.toggle('on',b.dataset.e===d.icon));paint();wireCalc('as');
   $('ae').onclick=e=>{const b=e.target.closest('button');if(b){d.icon=b.dataset.e;paint()}};
   $('ac').onclick=accListSheet;
-  $('asv').onclick=()=>{d.name=$('an').value.trim();if(!d.name){$('an').focus();return}d.start=parseFloat($('as').value)||0;
+  $('asv').onclick=()=>{d.name=$('an').value.trim();if(!d.name){$('an').focus();return}d.start=calcVal($('as').value)||0;
     if(isNew)accts.push(d);else Object.assign(a,d);persist();render();accListSheet()};
   if($('ad'))$('ad').onclick=()=>{
     const rest=accts.filter(x=>x.id!==a.id),to=rest[0];
@@ -888,7 +925,7 @@ function transferSheet(it){
   sheet(`<h3>${isNew?'Перевод между счетами':'Перевод'}</h3>
   <label>Откуда</label><div class="cl" id="tf"></div>
   <label>Куда</label><div class="cl" id="tt"></div>
-  <label>Сумма, ₽</label><input class="amt" id="ta" type="text" inputmode="decimal" value="${d.amount}" placeholder="0" autocomplete="off">
+  <label>Сумма, ₽</label><input class="amt" id="ta" type="text" inputmode="decimal" value="${gv(d.amount)}" placeholder="0" autocomplete="off">
   ${opsRow('ta')}<div id="tcalc"></div>
   <label>Заметка</label><input id="tn" value="${esc(d.title||'')}" placeholder="необязательно" autocomplete="off">
   <label>Дата</label><input id="td" type="date" value="${dstr(d.ts)}">
@@ -944,7 +981,7 @@ function recEdit(r){
   sheet(`<h3>${isNew?'Новый повторяющийся платёж':'Повторяющийся платёж'}</h3>
   <div class="seg" id="rts"><button data-t="expense" class="e">Расход</button><button data-t="income" class="i">Доход</button></div>
   <label>Название</label><input id="rn" value="${esc(d.title||'')}" placeholder="Например: Интернет" autocomplete="off">
-  <label>Сумма, ₽</label><input class="amt" id="ra" type="text" inputmode="decimal" value="${d.amount}" placeholder="0" autocomplete="off">
+  <label>Сумма, ₽</label><input class="amt" id="ra" type="text" inputmode="decimal" value="${gv(d.amount)}" placeholder="0" autocomplete="off">
   ${opsRow('ra')}<div id="rcalc"></div>
   <label>Категория</label><div class="cl" id="rcl"></div>
   ${accts.length>1?'<label>Счёт</label><div class="cl" id="rac"></div>':''}
@@ -996,7 +1033,7 @@ function debtEdit(x){
   sheet(`<h3>${isNew?'Новый долг':'Долг'}</h3>
   <div class="seg" id="dd"><button data-d="owed">Мне должны</button><button data-d="owe">Я должен</button></div>
   <label>Кто</label><input id="dw" value="${esc(d.who)}" placeholder="Имя" autocomplete="off">
-  <label>Сумма, ₽</label><input class="amt" id="da" type="text" inputmode="decimal" value="${d.amount}" placeholder="0" autocomplete="off">
+  <label>Сумма, ₽</label><input class="amt" id="da" type="text" inputmode="decimal" value="${gv(d.amount)}" placeholder="0" autocomplete="off">
   ${opsRow('da')}<div id="dcalc"></div>
   <label>Заметка</label><input id="dn" value="${esc(d.note||'')}" placeholder="необязательно" autocomplete="off">
   <label>Дата</label><input id="dt2" type="date" value="${dstr(d.ts)}">
@@ -1141,10 +1178,10 @@ function goalEdit(g){
   sheet(`<h3>${isNew?'Новая цель':'Цель'}</h3>
   <label>Название</label><input id="gn" value="${esc(d.name)}" placeholder="Например: Отпуск" autocomplete="off">
   <label>Иконка</label><div class="eg" id="ge2" style="grid-template-columns:repeat(8,1fr)">${GOAL_EMOJI.map(e=>`<button data-e="${e}">${e}</button>`).join('')}</div>
-  <label>Сколько нужно накопить, ₽</label><input class="amt" id="gt" type="text" inputmode="decimal" value="${d.target}" placeholder="0" autocomplete="off">
+  <label>Сколько нужно накопить, ₽</label><input class="amt" id="gt" type="text" inputmode="decimal" value="${gv(d.target)}" placeholder="0" autocomplete="off">
   ${opsRow('gt')}<div id="gcalc"></div>
   <label>Срок (необязательно)</label><input id="gd" type="date" value="${d.deadline?dstr(d.deadline):''}">
-  ${isNew?`<label>Уже накоплено, ₽</label><input id="gs" type="number" inputmode="decimal" min="0" value="0">`:''}
+  ${isNew?`<label>Уже накоплено, ₽</label><input id="gs" type="text" inputmode="decimal" data-g="1" autocomplete="off" value="0">`:''}
   <div class="row">${isNew?'':'<button class="btn d" id="gdl">Удалить</button>'}<button class="btn" id="gc">Отмена</button><button class="btn p" id="gsv">Сохранить</button></div>`);
   const paint=()=>document.querySelectorAll('#ge2 button').forEach(b=>b.classList.toggle('on',b.dataset.e===d.icon));paint();wireCalc('gt','gcalc');
   $('ge2').onclick=e=>{const b=e.target.closest('button');if(b){d.icon=b.dataset.e;paint()}};
@@ -1154,7 +1191,7 @@ function goalEdit(g){
     d.name=$('gn').value.trim();if(!d.name){$('gn').focus();return}
     const t=calcVal($('gt').value);if(!(t>0)){$('gt').focus();return}
     d.target=t;const dv=$('gd').value;if(dv){const [y,m,dy]=dv.split('-').map(Number);d.deadline=new Date(y,m-1,dy,23,59).getTime()}else d.deadline=null;
-    if(isNew){d.start=Math.max(0,parseFloat($('gs').value)||0);goals.push(d)}else Object.assign(g,d);
+    if(isNew){d.start=Math.max(0,calcVal($('gs').value)||0);goals.push(d)}else Object.assign(g,d);
     persist();render();isNew?goalListSheet():goalSheet(g);
   };
 }
@@ -1171,6 +1208,8 @@ function handle(text){
   const stamp=o=>Date.now()+o*DAY;
   if(!ok.length){const p=ps[0]||{title:text,type:'expense',cat:null,dayOffset:0};entrySheet(null,{title:p.title,type:p.type,cat:p.cat,ts:stamp(p.dayOffset||0),acc:p.acc||undefined});return}
   const made=ok.map((p,i)=>({id:uid(),ts:stamp(p.dayOffset)+i,type:p.type,amount:p.amount,title:p.title,cat:p.cat,acc:p.acc||defAcc(),...(p.tags&&p.tags.length?{tags:p.tags}:{})}));
+  const fresh=freshOnly(made);if(!fresh.length){toast('Уже добавлено');return}
+  made.length=0;made.push(...fresh);
   items.push(...made);persist();
   resetPeriod();filter=null;flt.q='';calSel=null;view=new Date(made[made.length-1].ts);view.setDate(1);setTab('ops');
   vib(60);
@@ -1218,7 +1257,9 @@ async function micAllowed(){
   try{if(navigator.permissions){const s=await navigator.permissions.query({name:'microphone'});if(s.state==='granted')return true;if(s.state==='denied')return false}}catch(e){}
   try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});stream.getTracks().forEach(t=>t.stop());await wait(500);return true}catch(e){return false}
 }
+let finishing=false;
 function finish(){
+  if(finishing)return;finishing=true;setTimeout(()=>finishing=false,700);
   const text=curText.trim();curText='';setSt('idle');$('heard').classList.remove('on');
   if(text){SND.done();handle(text)}else{SND.err();say('Ничего не услышал, попробуй ещё')}
 }
@@ -1236,16 +1277,16 @@ async function startVoice(){
   beginRec(false,0);
 }
 function beginRec(cont,retry){
-  rec=new SR();rec.lang='ru-RU';rec.continuous=cont;rec.interimResults=true;rec.maxAlternatives=1;
+  const my=rec=new SR();rec.lang='ru-RU';rec.continuous=cont;rec.interimResults=true;rec.maxAlternatives=1;
   stopReq=false;hadErr=false;curText='';
   const t0=Date.now();let lastErr='';
-  rec.onstart=()=>{setSt('listening');say('🔴 Говори… (нажми ещё раз — сохраню)',true)};
-  rec.onresult=e=>{curText=joinResults(e.results);say('«'+curText+'»',true)};
-  rec.onerror=e=>{lastErr=e.error;if(e.error==='aborted'||e.error==='no-speech'&&!stopReq&&Date.now()-t0<1500)return;hadErr=true;SND.err();
+  rec.onstart=()=>{if(my!==rec)return;setSt('listening');say('🔴 Говори… (нажми ещё раз — сохраню)',true)};
+  rec.onresult=e=>{if(my!==rec)return;curText=joinResults(e.results);say('«'+curText+'»',true)};
+  rec.onerror=e=>{if(my!==rec)return;lastErr=e.error;if(e.error==='aborted'||e.error==='no-speech'&&!stopReq&&Date.now()-t0<1500)return;hadErr=true;SND.err();
     if(e.error==='not-allowed'||e.error==='service-not-allowed'||e.error==='audio-capture'){setSt('idle');$('heard').classList.remove('on');dictSheet(srFailed()?'Встроенный голос в приложении на этом iPhone не работает — вернул диктовку клавиатуры.':'Запись голоса недоступна — продиктуй через клавиатуру: нажми значок микрофона на ней.');return}
     say(e.error==='no-speech'?'Ничего не услышал, попробуй ещё':e.error==='network'?'Нет интернета — голосу нужна сеть':'Ошибка: '+e.error)};
   rec.onend=()=>{
-    if(st==='idle')return;
+    if(my!==rec||st==='idle')return;
     if(stopReq){finish();return}
     if(hadErr){curText='';setSt('idle');return}
     if(curText.trim()){setSt('pending');say('«'+curText+'»  — нажми кнопку микрофона, чтобы сохранить',true);return} // оборвалось само, текст сохранён
@@ -1274,10 +1315,11 @@ function dictSheet(note){
       +(ok.length>1?`<div class="pi"><span><b>Итого</b></span><b>${fmt(ok.filter(p=>p.type==='expense').reduce((s,p)=>s+p.amount,0))}</b></div>`:'');
     if(!ok.length&&!bad.length)$('dp').innerHTML='<div class="pi" style="color:var(--mu)">Добавь сумму: «… 44 рубля»</div>';
   };
-  const submit=()=>{if(sent)return;sent=true;clearTimeout(tm);const t=$('dt').value;closeSheet();handle(t)};
+  const ta=$('dt');
+  const submit=()=>{if(sent)return;sent=true;clearTimeout(tm);const t=ta.value;closeSheet();handle(t)};
   // автосохранение: распознана ровно одна трата и текст перестал меняться (несколько трат сохраняются кнопкой)
   const arm=()=>{clearTimeout(tm);if(!autoSave||okN!==1)return;
-    tm=setTimeout(()=>{if(!$('dt')||Date.now()-lastKey<2500)return;submit()},3000)};
+    tm=setTimeout(()=>{if($('dt')!==ta||Date.now()-lastKey<2500)return;submit()},3000);window._dtm=tm};
   $('dt').addEventListener('keydown',()=>{lastKey=Date.now();clearTimeout(tm)});
   $('dt').oninput=()=>{upd();arm()};
   $('dc').onclick=()=>{sent=true;clearTimeout(tm);closeSheet()};
