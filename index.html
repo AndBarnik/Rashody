@@ -251,6 +251,7 @@ body.cov #cover{display:block}
     <h4>Голос</h4>
     <div class="sw2"><span>Звуки при записи</span><button class="btn" id="snd" style="flex:none;padding:8px 16px"></button></div>
     <div class="sw2"><span>Сохранять сразу после диктовки</span><button class="btn" id="aut" style="flex:none;padding:8px 16px"></button></div>
+    <div class="sw2" id="srr" style="display:none"><span>Встроенный голос (проба)</span><button class="btn" id="srb" style="flex:none;padding:8px 16px"></button></div>
     <div class="sw2"><span>Микрофон: <b id="mst">…</b></span><button class="btn" id="mchk" style="flex:none;padding:8px 16px">Разрешить</button></div>
     <div class="hint" id="mhint">Чтобы телефон не спрашивал каждый раз, выбирай «Разрешить» (не «Только сейчас»). Если уже запретил: Chrome → ⋮ → Настройки → Настройки сайтов → Микрофон → найди сайт → Разрешить.</div>
   </div>
@@ -1162,7 +1163,10 @@ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 const IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 const STANDALONE=!!(navigator.standalone||(window.matchMedia&&matchMedia('(display-mode: standalone)').matches));
 // iPhone-приложение с экрана «Домой» не умеет встроенное распознавание -> диктуем через клавиатуру
-const DICTATE=(IOS&&STANDALONE)||!SR;
+let trySR=LS('trySR',false);
+const dictate=()=>(IOS&&STANDALONE&&!trySR)||!SR;
+// встроенный голос в установленном приложении iPhone не работает — при провале выключаем пробу и возвращаем диктовку
+function srFailed(){if(IOS&&STANDALONE&&trySR){trySR=false;save('trySR',false);renderMore();return true}return false}
 let soundOn=LS('sound',true),autoSave=LS('auto',true);
 function tone(seq){
   if(!soundOn)return;
@@ -1221,7 +1225,7 @@ function beginRec(cont,retry){
   rec.onstart=()=>{setSt('listening');say('🔴 Говори… (нажми ещё раз — сохраню)',true)};
   rec.onresult=e=>{curText=joinResults(e.results);say('«'+curText+'»',true)};
   rec.onerror=e=>{lastErr=e.error;if(e.error==='aborted'||e.error==='no-speech'&&!stopReq&&Date.now()-t0<1500)return;hadErr=true;SND.err();
-    if(e.error==='not-allowed'||e.error==='service-not-allowed'||e.error==='audio-capture'){setSt('idle');$('heard').classList.remove('on');dictSheet('Запись голоса недоступна — продиктуй через клавиатуру: нажми значок микрофона на ней.');return}
+    if(e.error==='not-allowed'||e.error==='service-not-allowed'||e.error==='audio-capture'){setSt('idle');$('heard').classList.remove('on');dictSheet(srFailed()?'Встроенный голос в приложении на этом iPhone не работает — вернул диктовку клавиатуры.':'Запись голоса недоступна — продиктуй через клавиатуру: нажми значок микрофона на ней.');return}
     say(e.error==='no-speech'?'Ничего не услышал, попробуй ещё':e.error==='network'?'Нет интернета — голосу нужна сеть':'Ошибка: '+e.error)};
   rec.onend=()=>{
     if(st==='idle')return;
@@ -1230,7 +1234,7 @@ function beginRec(cont,retry){
     if(curText.trim()){setSt('pending');say('«'+curText+'»  — нажми кнопку микрофона, чтобы сохранить',true);return} // оборвалось само, текст сохранён
     const ms=Date.now()-t0;
     if(ms<2000&&retry<(IOS?0:2)){setSt('idle');say('Включаю заново…',true);setTimeout(()=>beginRec(!cont,retry+1),400);return} // мгновенный обрыв: пробуем другой режим
-    setSt('idle');$('heard').classList.remove('on');dictSheet('Запись голоса тут не работает — продиктуй через клавиатуру: нажми значок микрофона на ней.')
+    setSt('idle');$('heard').classList.remove('on');dictSheet(srFailed()?'Встроенный голос в приложении на этом iPhone не работает — вернул диктовку клавиатуры.':'Запись голоса тут не работает — продиктуй через клавиатуру: нажми значок микрофона на ней.')
   };
   try{rec.start()}catch(e){setSt('idle');say('Не удалось включить запись, попробуй ещё')}
 }
@@ -1264,7 +1268,7 @@ function dictSheet(note){
   $('dt').focus();
 }
 function listen(){
-  if(DICTATE&&st==='idle'){dictSheet();return}
+  if(dictate()&&st==='idle'){dictSheet();return}
   if(starting)return;
   if(st==='listening'){stopReq=true;vib(30);try{rec.stop()}catch(e){finish()}return}
   if(st==='pending'){vib(30);finish();return}
@@ -1293,12 +1297,14 @@ function renderMore(){
     `<button class="mr" data-o="goal"><span>Цели накопления</span><em>${goals.length?goals.length+' · '+fmt(goals.reduce((s,g)=>s+goalSaved(g),0)):'нет'}</em></button>`+
     `<button class="mr" data-o="tag"><span>Метки и события</span><em>${Object.keys(allTags()).length||'нет'}</em></button>`+
     `<button class="mr" data-o="week"><span>Итоги недели</span><em></em></button>`;
-  if(DICTATE){$('mchk').style.display='none';$('mst').textContent='не нужен';$('mhint').textContent=IOS?'На iPhone голос вводится диктовкой клавиатуры: нажми кнопку микрофона в приложении, потом значок микрофона на клавиатуре и говори. Разрешения не нужны.':'Голосовой ввод через клавиатуру: нажми значок микрофона на ней.'}
+  $('srr').style.display=IOS&&STANDALONE&&SR?'':'none';$('srb').textContent=trySR?'Вкл':'Выкл';
+  if(dictate()){$('mchk').style.display='none';$('mst').textContent='не нужен';$('mhint').textContent=IOS?'На iPhone голос вводится диктовкой клавиатуры: нажми кнопку микрофона в приложении, потом значок микрофона на клавиатуре и говори. Разрешения не нужны.':'Голосовой ввод через клавиатуру: нажми значок микрофона на ней.'}
   $('pinb').textContent=pinRec?'Вкл':'Выкл';$('lar').style.display=pinRec?'':'none';$('lab').textContent=LA[lockAfter];
   $('snd').textContent=soundOn?'Вкл':'Выкл';$('aut').textContent=autoSave?'Вкл':'Выкл';
-  (async()=>{if(DICTATE)return;let t='неизвестно';try{const s=await navigator.permissions.query({name:'microphone'});t={granted:'разрешён ✅',denied:'запрещён ⛔',prompt:'спросит при записи'}[s.state]||s.state}catch(e){}$('mst').textContent=t})();
+  (async()=>{if(dictate())return;let t='неизвестно';try{const s=await navigator.permissions.query({name:'microphone'});t={granted:'разрешён ✅',denied:'запрещён ⛔',prompt:'спросит при записи'}[s.state]||s.state}catch(e){}$('mst').textContent=t})();
 }
 $('mrows').onclick=e=>{const b=e.target.closest('.mr');if(!b)return;({acc:accListSheet,debt:debtListSheet,rec:recListSheet,fav:favListSheet,goal:goalListSheet,tag:tagListSheet,week:()=>weekSheet(0)})[b.dataset.o]()};
+$('srb').onclick=()=>{trySR=!trySR;save('trySR',trySR);renderMore();if(trySR)toast('Нажми кнопку микрофона. Если запись не пойдёт, приложение само вернёт диктовку клавиатуры.')};
 $('aut').onclick=()=>{autoSave=!autoSave;save('auto',autoSave);renderMore()};
 $('snd').onclick=()=>{soundOn=!soundOn;save('sound',soundOn);renderMore();SND.done()};
 $('mchk').onclick=async()=>{const ok=await micAllowed();await renderMore();if(!ok)say('Доступ запрещён — открой настройки сайта в Chrome (подсказка ниже)')};
