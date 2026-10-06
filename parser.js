@@ -107,6 +107,7 @@
   }
 
   const CONJ = ['и','а','потом','затем','еще','также','плюс','ну','вот','итого','всего'];
+  const TAGW = ['метка','метку','метки','тег','хештег','хэштег','событие'];
   const DAYW = { 'сегодня': 0, 'вчера': -1, 'позавчера': -2 };
   const CASH = ['нал','налом','наличкой','наличными','наличка','наличные','налик'];
   const CARD = ['карта','картой','карту','карты','картами'];
@@ -133,7 +134,10 @@
     const toks = t.split(/\s+/).filter(Boolean), am = accMatcher(accts), ev = [];
     const isN = w => w !== undefined && /^\d+(\.\d+)?$/.test(w);
     for (let i = 1; i < toks.length - 1; i++) if (toks[i] === 'за' && isN(toks[i - 1]) && isN(toks[i + 1]) && +toks[i + 1] > +toks[i - 1] * 3) toks[i - 1] = '\u0001' + toks[i - 1];
-    for (const w of toks) {
+    for (let ti = 0; ti < toks.length; ti++) {
+      const w = toks[ti];
+      if (w[0] === '#' && w.length > 1) { ev.push({ k: 'tag', v: w.slice(1) }); continue; }
+      if (TAGW.includes(w)) { const nx = toks[ti + 1]; if (nx && !/^\d/.test(nx)) { ev.push({ k: 'tag', v: nx }); ti++; } continue; }
       if (w[0] === '\u0001') { ev.push({ k: 'w', v: w.slice(1) }); continue; }
       if (w in DAYW) { ev.push({ k: 'day', v: DAYW[w] }); continue; }
       if (INCOME_CUES.includes(w)) { ev.push({ k: 'cue' }); continue; }
@@ -145,22 +149,24 @@
     }
     const first = ev.find(e => e.k === 'num' || e.k === 'w');
     const priceFirst = !!first && first.k === 'num';
-    const segs = []; let words = [], off = 0, acc = null, cue = false, cur = null;
+    const segs = []; let words = [], off = 0, acc = null, cue = false, cur = null, stags = [];
     if (!priceFirst) {
       for (const e of ev) {
         if (e.k === 'day') off = e.v;
         else if (e.k === 'acc') { if (!words.length && segs.length) segs[segs.length - 1].acc = e.v; else acc = e.v; }
         else if (e.k === 'cue') cue = true;
+        else if (e.k === 'tag') { if (!words.length && segs.length) segs[segs.length - 1].tags.push(e.v); else stags.push(e.v); }
         else if (e.k === 'w') words.push(e.v);
-        else { segs.push({ amount: e.v, words, off, acc, cue }); words = []; cue = false; }
+        else { segs.push({ amount: e.v, words, off, acc, cue, tags: stags.slice() }); words = []; cue = false; }
       }
-      if (words.length) { if (segs.length) segs[segs.length - 1].words = segs[segs.length - 1].words.concat(words); else segs.push({ amount: null, words, off, acc, cue }); }
+      if (words.length) { if (segs.length) segs[segs.length - 1].words = segs[segs.length - 1].words.concat(words); else segs.push({ amount: null, words, off, acc, cue, tags: stags.slice() }); }
     } else {
       for (const e of ev) {
         if (e.k === 'day') off = e.v;
         else if (e.k === 'acc') { acc = e.v; if (cur && cur.acc == null) cur.acc = e.v; }
         else if (e.k === 'cue') { if (cur) cur.cue = true; else cue = true; }
-        else if (e.k === 'num') { cur = { amount: e.v, words: [], off, acc, cue }; cue = false; segs.push(cur); }
+        else if (e.k === 'tag') { if (cur) cur.tags.push(e.v); else stags.push(e.v); }
+        else if (e.k === 'num') { cur = { amount: e.v, words: [], off, acc, cue, tags: stags.slice() }; cue = false; segs.push(cur); }
         else if (e.k === 'w') { if (cur) cur.words.push(e.v); else words.push(e.v); }
       }
       if (segs.length && words.length) segs[0].words = words.concat(segs[0].words);
@@ -172,7 +178,7 @@
       let c = categorize(ws, cats, learned), type;
       if (c) type = c.type; else { type = s.cue ? 'income' : 'expense'; c = fallbackOf(cats, type); }
       const title = ws.join(' ');
-      return { amount: s.amount, type, cat: c ? c.id : null, dayOffset: s.off, acc: s.acc || null, title: title ? title[0].toUpperCase() + title.slice(1) : '' };
+      return { amount: s.amount, type, cat: c ? c.id : null, dayOffset: s.off, acc: s.acc || null, tags: [...new Set((s.tags || []).map(t => t.replace(/[^a-zа-я0-9_-]+/g, '').slice(0, 24)).filter(Boolean))], title: title ? title[0].toUpperCase() + title.slice(1) : '' };
     });
   }
 
