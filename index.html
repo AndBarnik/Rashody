@@ -121,7 +121,7 @@ nav .t.on{color:var(--ac);font-weight:600}
   <div class="card">
     <h4>Голос</h4>
     <div class="sw2"><span>Звуки при записи</span><button class="btn" id="snd" style="flex:none;padding:8px 16px"></button></div>
-    <div class="sw2"><span>Микрофон: <b id="mst">…</b></span><button class="btn" id="mchk" style="flex:none;padding:8px 16px">Разрешить</button></div>
+    <div class="sw2"><span><span id="mlab">Микрофон</span>: <b id="mst">…</b></span><button class="btn" id="mchk" style="flex:none;padding:8px 16px">Разрешить</button></div>
     <div class="hint" id="mhint">Чтобы телефон не спрашивал каждый раз, выбирай «Разрешить» (не «Только сейчас»). Если уже запретил: Chrome → ⋮ → Настройки → Настройки сайтов → Микрофон → найди сайт → Разрешить.</div>
   </div>
   <div class="card more"><h4>Данные</h4>
@@ -376,8 +376,8 @@ function handle(text){
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 const IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 const STANDALONE=!!(navigator.standalone||(window.matchMedia&&matchMedia('(display-mode: standalone)').matches));
-// iPhone-приложение с экрана «Домой» не умеет встроенное распознавание -> диктуем через клавиатуру
-const DICTATE=(IOS&&STANDALONE)||!SR;
+// iPhone не умеет встроенное распознавание в приложении с экрана «Домой»
+const LOCAL=IOS||!SR; // на iPhone (и где нет встроенного распознавания) слушаем своей моделью
 let soundOn=LS('sound',true);
 function tone(seq){
   if(!soundOn)return;
@@ -394,7 +394,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
 // 'idle' -> тап -> 'listening' -> тап -> сохранить;  если распознавание оборвалось само, текст ждёт ('pending') и следующий тап сохраняет
 let rec=null,st='idle',curText='',stopReq=false,hadErr=false,hideT;
 function setSt(x){st=x;const m=$('mic');m.classList.toggle('rec',x==='listening');m.classList.toggle('pend',x==='pending');
-  m.textContent=x==='listening'?'⏹':x==='pending'?'✔️':'🎤';$('heard').classList.toggle('act',x!=='idle')}
+  m.textContent=x==='listening'?'⏹':x==='pending'?'✔️':(x==='busy'||x==='loading')?'⏳':'🎤';$('heard').classList.toggle('act',x!=='idle')}
 function say(t,keep){const h=$('heard');$('htxt').textContent=t;h.classList.add('on');clearTimeout(hideT);if(!keep)hideT=setTimeout(()=>{if(st==='idle')h.classList.remove('on')},4500)}
 function joinResults(res){ // Chrome на Android присылает нарастающие повторы: «йогурт», «йогурт 44», «йогурт 44 рубля»
   const out=[];
@@ -415,7 +415,7 @@ function finish(){
   const text=curText.trim();curText='';setSt('idle');$('heard').classList.remove('on');
   if(text){SND.done();handle(text)}else{SND.err();say('Ничего не услышал, попробуй ещё')}
 }
-function cancelVoice(){stopReq=true;try{rec&&rec.abort()}catch(e){}curText='';setSt('idle');$('heard').classList.remove('on')}
+function cancelVoice(){job++;if(rc){clearInterval(rc.timer);try{rc.node.disconnect();rc.stream.getTracks().forEach(t=>t.stop());rc.ctx.close()}catch(e){}rc=null}stopReq=true;try{rec&&rec.abort()}catch(e){}curText='';setSt('idle');$('heard').classList.remove('on')}
 let starting=false;
 async function startVoice(){
   if(!SR){say('Голос не поддерживается этим браузером — открой в Chrome или добавь вручную (＋)');return}
@@ -448,6 +448,73 @@ function beginRec(cont,retry){
   };
   try{rec.start()}catch(e){setSt('idle');say('Не удалось включить запись, попробуй ещё')}
 }
+// ---------- Распознавание речи прямо на телефоне (Whisper, работает офлайн после загрузки) ----------
+let asr=null,asrP=null,rc=null,job=0;
+const asrCached=()=>LS('asr',false);
+function loadASR(cb){
+  if(asr)return Promise.resolve(asr);
+  if(asrP)return asrP;
+  const files={};
+  asrP=(async()=>{
+    const lib=window.__tf||await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1');
+    lib.env.allowLocalModels=false;lib.env.useBrowserCache=true;
+    try{lib.env.backends.onnx.wasm.numThreads=1}catch(e){}
+    try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+    return lib.pipeline('automatic-speech-recognition','Xenova/whisper-base',{dtype:'q8',device:'wasm',progress_callback:d=>{
+      if(d&&d.status==='progress'&&d.total){files[d.file]=d;let l=0,t=0;for(const k in files){l+=files[k].loaded;t+=files[k].total}
+        if(cb&&t)cb(Math.min(99,Math.round(l/t*100)))}}});
+  })().then(p=>{asr=p;save('asr',true);return p}).catch(e=>{asrP=null;throw e});
+  return asrP;
+}
+function pcm16k(chunks,sr){
+  let n=0;chunks.forEach(c=>n+=c.length);
+  const all=new Float32Array(n);let o=0;chunks.forEach(c=>{all.set(c,o);o+=c.length});
+  const ratio=sr/16000,len=Math.floor(n/ratio),out=new Float32Array(len);
+  for(let i=0;i<len;i++){const a=Math.floor(i*ratio),b=Math.min(n,Math.max(a+1,Math.floor((i+1)*ratio)));let t=0;for(let j=a;j<b;j++)t+=all[j];out[i]=t/(b-a)}
+  return out;
+}
+async function localListen(){
+  if(st==='busy'||st==='loading')return;
+  if(st==='listening'){stopLocal();return}
+  SND.start();vib(30);
+  const ctx=new (window.AudioContext||window.webkitAudioContext)();try{ctx.resume()}catch(e){} // внутри тапа, иначе iOS не даст
+  if(!asr&&!asrCached()){ // первый запуск: скачиваем модель
+    try{ctx.close()}catch(e){}
+    setSt('loading');const my=++job;say('⏳ Скачиваю голосовую модель… 0%',true);
+    try{await loadASR(p=>{if(my===job)say('⏳ Скачиваю голосовую модель… '+p+'%',true)})}
+    catch(e){if(my===job){setSt('idle');$('heard').classList.remove('on');SND.err();dictSheet('Не удалось скачать голосовую модель (при первом запуске нужен интернет, лучше Wi-Fi). Пока можно продиктовать через клавиатуру:')}return}
+    if(my!==job)return;
+    setSt('idle');SND.done();say('Модель готова ✅ Нажми 🎤 и говори.');return;
+  }
+  loadASR().catch(()=>{}); // если уже скачана — подгружаем в память, пока говоришь
+  let stream;
+  try{stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}})}
+  catch(e){try{ctx.close()}catch(_){}SND.err();dictSheet('Нет доступа к микрофону. Разреши его (Настройки → Safari → Микрофон) или продиктуй через клавиатуру:');return}
+  const src=ctx.createMediaStreamSource(stream),node=ctx.createScriptProcessor(4096,1,1),mute=ctx.createGain();mute.gain.value=0;
+  const chunks=[];let peak=0;
+  node.onaudioprocess=e=>{const d=e.inputBuffer.getChannelData(0);chunks.push(new Float32Array(d));for(let i=0;i<d.length;i++){const v=Math.abs(d[i]);if(v>peak)peak=v}};
+  src.connect(node);node.connect(mute);mute.connect(ctx.destination);
+  rc={stream,ctx,node,chunks,t0:Date.now(),peak:()=>peak,timer:setInterval(()=>{const sec=Math.round((Date.now()-rc.t0)/1000);say('🔴 Говори… '+sec+' с  (нажми ещё раз — сохраню)',true);if(sec>=25)stopLocal()},400)};
+  setSt('listening');say('🔴 Говори…  (нажми ещё раз — сохраню)',true);
+}
+async function stopLocal(){
+  const r=rc;if(!r)return;rc=null;clearInterval(r.timer);vib(30);
+  const sr=r.ctx.sampleRate,peak=r.peak();
+  try{r.node.disconnect();r.stream.getTracks().forEach(t=>t.stop());r.ctx.close()}catch(e){}
+  if((Date.now()-r.t0)<700||peak<0.008){setSt('idle');SND.err();say('Ничего не услышал, попробуй ещё');return}
+  setSt('busy');say('⏳ Распознаю…',true);const my=++job;
+  try{
+    const pcm=pcm16k(r.chunks,sr),g=Math.min(8,0.9/peak);for(let i=0;i<pcm.length;i++)pcm[i]*=g;
+    const m=await loadASR();
+    const out=await m(pcm,{language:'russian',task:'transcribe'});
+    if(my!==job)return;
+    let text=((out&&out.text)||'').trim();
+    if(/субтитр|продолжение следует|dimatorzok/i.test(text))text='';
+    setSt('idle');$('heard').classList.remove('on');
+    if(!text){SND.err();say('Не разобрал, попробуй ещё');return}
+    SND.done();handle(text);
+  }catch(e){if(my!==job)return;setSt('idle');$('heard').classList.remove('on');SND.err();dictSheet('Не получилось распознать. Можно продиктовать через клавиатуру:')}
+}
 function dictSheet(note){
   sheet(`<h3>🎤 Скажи или напиши</h3>
   <div class="hint" style="font-size:14px;margin:0 0 8px">${note||'Нажми значок микрофона на клавиатуре телефона и скажи, например: «йогурт 44 рубля».'}</div>
@@ -462,7 +529,7 @@ function dictSheet(note){
   $('dt').focus();
 }
 function listen(){
-  if(DICTATE&&st==='idle'){dictSheet();return}
+  if(LOCAL){localListen();return}
   if(starting)return;
   if(st==='listening'){stopReq=true;vib(30);try{rec.stop()}catch(e){finish()}return}
   if(st==='pending'){vib(30);finish();return}
@@ -480,12 +547,15 @@ $('next').onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()+1,1);ren
 
 function download(name,mime,text){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:mime}));a.download=name;a.click()}
 function renderMore(){
-  if(DICTATE){$('mchk').style.display='none';$('mst').textContent='не нужен';$('mhint').textContent=IOS?'На iPhone голос вводится диктовкой клавиатуры: нажми 🎤 в приложении, потом значок микрофона на клавиатуре и говори. Разрешения не нужны.':'Голосовой ввод через клавиатуру: нажми значок микрофона на ней.'}
+  if(LOCAL){$('mlab').textContent='Голосовая модель';$('mst').textContent=asr?'готова ✅':asrCached()?'скачана ✅':'не скачана';
+    $('mchk').style.display=asr?'none':'';$('mchk').textContent='Скачать';
+    $('mhint').textContent='Распознавание идёт прямо на телефоне. Один раз нужно скачать модель (≈80 МБ, лучше по Wi-Fi), дальше работает и без интернета. Если не получается — 🎤 предложит диктовку клавиатуры.';return}
   $('snd').textContent=soundOn?'Вкл':'Выкл';
   (async()=>{let t='неизвестно';try{const s=await navigator.permissions.query({name:'microphone'});t={granted:'разрешён ✅',denied:'запрещён ⛔',prompt:'спросит при записи'}[s.state]||s.state}catch(e){}$('mst').textContent=t})();
 }
 $('snd').onclick=()=>{soundOn=!soundOn;save('sound',soundOn);renderMore();SND.done()};
-$('mchk').onclick=async()=>{const ok=await micAllowed();await renderMore();if(!ok)say('Доступ запрещён — открой настройки сайта в Chrome (подсказка ниже)')};
+$('mchk').onclick=async()=>{if(LOCAL){$('mst').textContent='0%';try{await loadASR(p=>{$('mst').textContent=p+'%'})}catch(e){$('mst').textContent='нужен интернет';return}renderMore();return}
+  const ok=await micAllowed();await renderMore();if(!ok)say('Доступ запрещён — открой настройки сайта в Chrome (подсказка ниже)')};
 $('wipe').onclick=e=>{e.preventDefault();sheet(`<h3>Удалить все данные?</h3><p>Все записи и свои категории будут стёрты на этом телефоне. Сначала можно сохранить копию.</p><div class="row"><button class="btn" id="n">Отмена</button><button class="btn d" id="y">Удалить всё</button></div>`);
   $('n').onclick=closeSheet;$('y').onclick=()=>{items=[];cats=Parser.DEFAULTS.map(c=>({...c,kw:[...c.kw]}));learned={};persist();closeSheet();render()}};
 $('exp').onclick=e=>{e.preventDefault();
@@ -501,9 +571,10 @@ $('file').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileRe
   r.readAsText(f);e.target.value=''};
 $('help').onclick=e=>{e.preventDefault();if(IOS){sheet(`<h3>Быстрый доступ на iPhone</h3>
 <p><b>1.</b> Открой сайт в Safari → «Поделиться» → <b>«На экран “Домой”»</b>. Запускай приложение только с этой иконки.</p>
-<p><b>2.</b> Нажми 🎤 → откроется строка с клавиатурой → нажми <b>значок микрофона на клавиатуре</b> и скажи: «йогурт 44 рубля» → «Записать».</p>
-<p><b>3.</b> Чтобы иконка всегда была под рукой, положи её на первый экран или в нижний ряд.</p>
-<p>Виджета и ярлыка прямо в запись голоса из веб-приложения на iPhone сделать нельзя — это ограничение iOS.</p>
+<p><b>2.</b> Первый раз нажми 🎤 — скачается голосовая модель (≈80 МБ, лучше по Wi-Fi). Дальше работает и без интернета.</p>
+<p><b>3.</b> Нажми 🎤 (разреши микрофон), скажи «йогурт 44 рубля», нажми ещё раз — расход записан. Каждый раз при запуске приложения iPhone может заново спросить про микрофон.</p>
+<p><b>4.</b> Положи иконку на первый экран или в нижний ряд, чтобы она была под рукой.</p>
+<p>Виджета и ярлыка прямо в запись из веб-приложения на iPhone сделать нельзя — это ограничение iOS.</p>
 <button class="btn p" style="width:100%" onclick="closeSheet()">Понятно</button>`);return}
   sheet(`<h3>Голос без открытия приложения</h3>
 <p><b>1.</b> В Chrome нажми ⋮ → «Установить приложение».</p>
@@ -517,6 +588,7 @@ if(new URLSearchParams(location.search).get('voice')==='1'){
   window.addEventListener('load',()=>setTimeout(listen,300));
   history.replaceState(null,'','./');
 }
+if(LOCAL&&asrCached())setTimeout(()=>loadASR().catch(()=>{}),2000);
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
 render();
 </script>

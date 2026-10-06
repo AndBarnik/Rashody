@@ -81,7 +81,7 @@
 
   function parse(raw, cats, learned) {
     cats = cats || DEFAULTS;
-    let t = norm(raw).replace(/[«»"!?;:]/g, ' ');
+    let t = norm(raw).replace(/[«»"!?;:]/g, ' ').replace(/(\d),(\d)/g, '$1.$2').replace(/,/g, ' ').replace(/\.(?=\s|$)/g, ' ');
     t = t.replace(/(\d+(?:[.,]\d+)?)\s*(?:тысяч[а-я]*|тыс\.?|к)(?=\s|$)/g, (m, n) => String(parseFloat(n.replace(',', '.')) * 1000));
     t = wordsToDigits(t.replace(/(\d)\s+(?=\d{3}(?:\s|$))/g, '$1'));
     t = t.replace(/(\d),(\d)/g, '$1.$2').replace(/₽/g, ' ₽ ');
@@ -94,7 +94,7 @@
       if (m) { amount = parseFloat(m[1]); idx = i; break; }
     }
     const dayOffset = toks.includes('позавчера') ? -2 : toks.includes('вчера') ? -1 : 0;
-    const words = toks.filter((w, i) => i !== idx && !CUR.test(w) && !/^\d+(\.\d+)?$/.test(w) && !NOISE.includes(w));
+    const words = toks.filter((w, i) => i !== idx && !/^[-–—.]+$/.test(w) && !CUR.test(w) && !/^\d+(\.\d+)?$/.test(w) && !NOISE.includes(w));
     let cat = categorize(words, cats, learned);
     let type;
     if (cat) type = cat.type;
